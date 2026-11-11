@@ -76,10 +76,10 @@ file, or with `all = TRUE` empties the whole cache.
 ``` r
 old <- options(ntlpanel.cache_dir = file.path(tempdir(), "ntl-cache"))
 ntl_cache_dir()
-#> [1] "/tmp/RtmpUCRD7M/ntl-cache"
+#> [1] "/tmp/RtmpgTMHr5/ntl-cache"
 ntl_cache_info()
 #>                        path n_files size_mb
-#> 1 /tmp/RtmpUCRD7M/ntl-cache       0       0
+#> 1 /tmp/RtmpgTMHr5/ntl-cache       0       0
 ntl_cache_clear(all = TRUE)
 options(old)
 ```
