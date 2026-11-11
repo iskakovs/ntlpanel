@@ -2,7 +2,6 @@
 
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/iskakovs/ntlpanel/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/iskakovs/ntlpanel/actions/workflows/R-CMD-check.yaml)
-[![pkgcheck](https://github.com/iskakovs/ntlpanel/actions/workflows/pkgcheck.yaml/badge.svg)](https://github.com/iskakovs/ntlpanel/actions/workflows/pkgcheck.yaml)
 [![Project Status: WIP](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#wip)
 <!-- badges: end -->
 
