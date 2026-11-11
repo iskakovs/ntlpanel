@@ -74,7 +74,8 @@ georeferences it from the tile id in the file name.</p>
 
 
 <dt id="arg-flip">flip<a class="anchor" aria-label="anchor" href="#arg-flip"></a></dt>
-<dd><p><code>NA</code> (automatic), <code>TRUE</code> or <code>FALSE</code>.</p></dd>
+<dd><p><code>NA</code> (automatic), <code>TRUE</code> (flip the stored grid vertically) or
+<code>FALSE</code> (use the stored row order as is).</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -83,17 +84,17 @@ georeferences it from the tile id in the file name.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Fill values (65535 for radiance and counts, 255 for quality) become
-<code>NA</code>. Values are returned as stored in Collection 2 (nW/cm2/sr); no extra
-scale factor is applied.</p>
-<p><strong>Orientation.</strong> Some GDAL builds return Black Marble grids bottom-up,
-which makes tiles appear upside down (reported in blackmarbler issue
-#17). <code>ntl_read_bm()</code> therefore (1) keeps GDAL's own georeferencing when
-it matches the tile, (2) otherwise checks the file's <code>lat</code> dataset with
-the hdf5r package, if installed, and flips the grid when latitude
-increases with row number, and (3) otherwise assumes north-up rows. Use
-<code>flip</code> to force the choice, and check one tile against a known city
-before a large run.</p>
+    <p>Tiles are read directly with the hdf5r package rather than through GDAL,
+because GDAL versions disagree about the row order of these grids (some
+return them upside down; see blackmarbler issue #17). The fill value
+(the dataset's <code>_FillValue</code> attribute, otherwise 65535 for radiance and
+counts and 255 for quality) becomes <code>NA</code>, and <code>scale_factor</code> and
+<code>add_offset</code> attributes are applied when present.</p>
+<p><strong>Orientation.</strong> Rows are taken to run from north to south, as in the
+Black Marble product specification. If the file contains a <code>lat</code> dataset
+that increases with row number, the grid is flipped. Use <code>flip = TRUE</code> or
+<code>FALSE</code> to override, and check one tile against a known city before a
+large run (the validation script in <code>inst/scripts</code> does this).</p>
     </div>
 
     <div class="section level2">
@@ -104,7 +105,6 @@ before a large run.</p>
 <span class="r-in"><span>  package <span class="op">=</span> <span class="st">"ntlpanel"</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">r</span> <span class="op">&lt;-</span> <span class="fu">ntl_read_bm</span><span class="op">(</span><span class="va">f</span><span class="op">)</span></span></span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>[rast] guessed crs</span>
 <span class="r-in"><span><span class="va">r</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> class       : SpatRaster</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> size        : 40, 40, 3  (nrow, ncol, nlyr)</span>
@@ -112,9 +112,6 @@ before a large run.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> extent      : 70, 80, 40, 50  (xmin, xmax, ymin, ymax)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> coord. ref. : lon/lat WGS 84 (EPSG:4326)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> source(s)   : memory</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> varnames    : HDFEOS/GRIDS/VIIRS_Grid_DNB_2d/Data Fields/NearNadir_Composite_Snow_Free</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>               HDFEOS/GRIDS/VIIRS_Grid_DNB_2d/Data Fields/NearNadir_Composite_Snow_Free_Num</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>               HDFEOS/GRIDS/VIIRS_Grid_DNB_2d/Data Fields/NearNadir_Composite_Snow_Free_Quality</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> names       : value, nobs, quality</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> min values  :     0,    3,       0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> max values  :   352,   12,       2</span>

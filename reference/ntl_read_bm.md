@@ -33,7 +33,8 @@ ntl_read_bm(
 
 - flip:
 
-  `NA` (automatic), `TRUE` or `FALSE`.
+  `NA` (automatic), `TRUE` (flip the stored grid vertically) or `FALSE`
+  (use the stored row order as is).
 
 ## Value
 
@@ -41,18 +42,18 @@ A `SpatRaster` in EPSG:4326.
 
 ## Details
 
-Fill values (65535 for radiance and counts, 255 for quality) become
-`NA`. Values are returned as stored in Collection 2 (nW/cm2/sr); no
-extra scale factor is applied.
+Tiles are read directly with the hdf5r package rather than through GDAL,
+because GDAL versions disagree about the row order of these grids (some
+return them upside down; see blackmarbler issue \#17). The fill value
+(the dataset's `_FillValue` attribute, otherwise 65535 for radiance and
+counts and 255 for quality) becomes `NA`, and `scale_factor` and
+`add_offset` attributes are applied when present.
 
-**Orientation.** Some GDAL builds return Black Marble grids bottom-up,
-which makes tiles appear upside down (reported in blackmarbler issue
-\#17). `ntl_read_bm()` therefore (1) keeps GDAL's own georeferencing
-when it matches the tile, (2) otherwise checks the file's `lat` dataset
-with the hdf5r package, if installed, and flips the grid when latitude
-increases with row number, and (3) otherwise assumes north-up rows. Use
-`flip` to force the choice, and check one tile against a known city
-before a large run.
+**Orientation.** Rows are taken to run from north to south, as in the
+Black Marble product specification. If the file contains a `lat` dataset
+that increases with row number, the grid is flipped. Use `flip = TRUE`
+or `FALSE` to override, and check one tile against a known city before a
+large run (the validation script in `inst/scripts` does this).
 
 ## Examples
 
@@ -63,7 +64,6 @@ f <- system.file("extdata", "VNP46A3.A2023001.h25v04.002.2023040000000.h5",
   package = "ntlpanel"
 )
 r <- ntl_read_bm(f)
-#> Warning: [rast] guessed crs
 r
 #> class       : SpatRaster
 #> size        : 40, 40, 3  (nrow, ncol, nlyr)
@@ -71,9 +71,6 @@ r
 #> extent      : 70, 80, 40, 50  (xmin, xmax, ymin, ymax)
 #> coord. ref. : lon/lat WGS 84 (EPSG:4326)
 #> source(s)   : memory
-#> varnames    : HDFEOS/GRIDS/VIIRS_Grid_DNB_2d/Data Fields/NearNadir_Composite_Snow_Free
-#>               HDFEOS/GRIDS/VIIRS_Grid_DNB_2d/Data Fields/NearNadir_Composite_Snow_Free_Num
-#>               HDFEOS/GRIDS/VIIRS_Grid_DNB_2d/Data Fields/NearNadir_Composite_Snow_Free_Quality
 #> names       : value, nobs, quality
 #> min values  :     0,    3,       0
 #> max values  :   352,   12,       2

@@ -35,7 +35,9 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="ntlpanel-development-version">ntlpanel (development version)<a class="anchor" aria-label="anchor" href="#ntlpanel-development-version"></a></h2>
-<ul><li>Downloads now go to a temporary folder by default; set <code>NTLPANEL_CACHE</code> or the <code>ntlpanel.cache_dir</code> option to keep them between sessions.</li>
+<ul><li>
+<code><a href="../reference/ntl_read_bm.html">ntl_read_bm()</a></code> now reads Black Marble tiles with hdf5r instead of GDAL. Recent GDAL versions return these grids upside down, which flipped tiles on R 4.5 and 4.6. hdf5r moves from Suggests to Imports. Fill values, <code>scale_factor</code> and <code>add_offset</code> are taken from the dataset attributes.</li>
+<li>Downloads now go to a temporary folder by default; set <code>NTLPANEL_CACHE</code> or the <code>ntlpanel.cache_dir</code> option to keep them between sessions.</li>
 <li>New <code><a href="../reference/ntl_cache_dir.html">ntl_cache_info()</a></code>; <code>ntl_cache_clear(all = TRUE)</code> empties the cache.</li>
 <li>A small example Black Marble tile ships in <code>inst/extdata</code>, so <code><a href="../reference/ntl_read_bm.html">ntl_read_bm()</a></code> has a runnable example.</li>
 <li>Examples that need the internet or a token use <code>@examplesIf</code> instead of <code>\dontrun{}</code>.</li>

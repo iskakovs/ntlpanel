@@ -76,7 +76,8 @@ ntl_extract(
 
 - flip:
 
-  `NA` (automatic), `TRUE` or `FALSE`.
+  `NA` (automatic), `TRUE` (flip the stored grid vertically) or `FALSE`
+  (use the stored row order as is).
 
 - quiet:
 

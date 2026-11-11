@@ -38,12 +38,9 @@ pak::pak("iskakovs/ntlpanel")
 # or: remotes::install_github("iskakovs/ntlpanel")
 ```
 
-The package depends on `terra`, `sf`, `exactextractr` and `httr2`.
-Reading Black Marble `.h5` files needs a GDAL build with HDF5 support,
-which the CRAN binaries of `terra` include. The optional `hdf5r` package
-lets
-[`ntl_read_bm()`](https://iskakovs.github.io/ntlpanel/reference/ntl_read_bm.md)
-check tile orientation automatically.
+The package depends on `terra`, `sf`, `exactextractr`, `httr2` and
+`hdf5r`. Black Marble `.h5` files are read with `hdf5r` rather than
+through GDAL, so tile orientation does not depend on the GDAL version.
 
 ## Quick start (offline, synthetic data)
 
@@ -144,10 +141,9 @@ Two parts have **not yet been run against live data**:
     The URL layout and listing format were checked against the live
     archive, and the whole download path is tested with mocked
     responses.
-2.  **Tile orientation.** Orientation handling with real Black Marble
-    files. Some GDAL builds return tiles upside down, and
-    [`ntl_read_bm()`](https://iskakovs.github.io/ntlpanel/reference/ntl_read_bm.md)
-    checks for this.
+2.  **Tile orientation.** Orientation with real Black Marble files.
+    Tiles are read with `hdf5r` (GDAL versions disagree about their row
+    order) and assumed north-up, as in the product specification.
 
 Run
 `system.file("scripts", "validate_splice_kz.R", package = "ntlpanel")`

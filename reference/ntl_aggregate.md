@@ -67,23 +67,17 @@ A data frame with one row per unit:
 ## Examples
 
 ``` r
-ex <- ntl_example()
-m <- ntl_files(ex$dir, "eog_vnl_monthly")
-r <- ntl_read(m, period = "2022-06", series = "eog_vnl_monthly_npp")
-r <- ntl_mask(r)
-ntl_aggregate(r, ex$units_old, id_col = "district")
-#>   district   ntl_sum ntl_sum_adj  ntl_mean share_valid share_masked mean_obs
-#> 1       D1        NA          NA        NA           0            0        0
-#> 2       D2        NA          NA        NA           0            0        0
-#> 3       D3        NA          NA        NA           0            0        0
-#> 4       D4  773.5295    773.5295 0.3223040           1            0        8
-#> 5       D5 1734.0659   1734.0659 0.7225275           1            0        8
-#> 6       D6 5722.8332   5722.8332 2.3845138           1            0        8
-#>   n_pixels
-#> 1     2400
-#> 2     2400
-#> 3     2400
-#> 4     2400
-#> 5     2400
-#> 6     2400
+# A 4 x 4 raster with one unobserved pixel pair, split into two units
+r <- terra::rast(xmin = 0, xmax = 2, ymin = 0, ymax = 2, nrows = 4,
+                 ncols = 4, crs = "EPSG:4326", names = "value")
+terra::values(r) <- c(1, 2, 3, 4, 5, 6, 7, 8, NA, NA, 0, 0, 1, 1, 0, 0)
+units <- sf::st_as_sf(terra::vect(c(
+  "POLYGON ((0 0, 1 0, 1 2, 0 2, 0 0))",
+  "POLYGON ((1 0, 2 0, 2 2, 1 2, 1 0))"
+), crs = "EPSG:4326"))
+units$id <- c("west", "east")
+ntl_aggregate(r, units, id_col = "id")
+#>     id ntl_sum ntl_sum_adj ntl_mean share_valid share_masked mean_obs n_pixels
+#> 1 west      16    21.33333 2.666667        0.75           NA       NA        8
+#> 2 east      22    22.00000 2.750000        1.00           NA       NA        8
 ```
