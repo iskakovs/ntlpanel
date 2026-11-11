@@ -111,7 +111,6 @@ NOAA-20 level shift across Kazakhstan's regions and calendar months.
 - NOAA-21 products once they are available on LAADS.
 - Network distances in `ntl_exposure()` (via `dodgr`).
 - H3 grid helpers built on `h3o`.
-- rOpenSci review and a JOSS paper.
 
 ## License
 
