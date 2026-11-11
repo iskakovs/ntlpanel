@@ -21,7 +21,8 @@ ntl_read_bm(
 \item{layers}{Which layers to return, renamed to \code{value}, \code{nobs} and
 \code{quality}.}
 
-\item{flip}{\code{NA} (automatic), \code{TRUE} or \code{FALSE}.}
+\item{flip}{\code{NA} (automatic), \code{TRUE} (flip the stored grid vertically) or
+\code{FALSE} (use the stored row order as is).}
 }
 \value{
 A \code{SpatRaster} in EPSG:4326.
@@ -32,21 +33,20 @@ monthly or annual tile (\code{VNP46A3}, \code{VNP46A4}, \code{VJ146A3}, \code{VJ
 georeferences it from the tile id in the file name.
 }
 \details{
-Fill values (65535 for radiance and counts, 255 for quality) become
-\code{NA}. Values are returned as stored in Collection 2 (nW/cm2/sr); no extra
-scale factor is applied.
+Tiles are read directly with the hdf5r package rather than through GDAL,
+because GDAL versions disagree about the row order of these grids (some
+return them upside down; see blackmarbler issue #17). The fill value
+(the dataset's \verb{_FillValue} attribute, otherwise 65535 for radiance and
+counts and 255 for quality) becomes \code{NA}, and \code{scale_factor} and
+\code{add_offset} attributes are applied when present.
 
-\strong{Orientation.} Some GDAL builds return Black Marble grids bottom-up,
-which makes tiles appear upside down (reported in blackmarbler issue
-#17). \code{ntl_read_bm()} therefore (1) keeps GDAL's own georeferencing when
-it matches the tile, (2) otherwise checks the file's \code{lat} dataset with
-the hdf5r package, if installed, and flips the grid when latitude
-increases with row number, and (3) otherwise assumes north-up rows. Use
-\code{flip} to force the choice, and check one tile against a known city
-before a large run.
+\strong{Orientation.} Rows are taken to run from north to south, as in the
+Black Marble product specification. If the file contains a \code{lat} dataset
+that increases with row number, the grid is flipped. Use \code{flip = TRUE} or
+\code{FALSE} to override, and check one tile against a known city before a
+large run (the validation script in \code{inst/scripts} does this).
 }
 \examples{
-\dontshow{if ("HDF5" \%in\% terra::gdal(drivers = TRUE)$name) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
 # A small synthetic tile shipped with the package (real tiles are
 # 2400 x 2400 pixels)
 f <- system.file("extdata", "VNP46A3.A2023001.h25v04.002.2023040000000.h5",
@@ -55,5 +55,4 @@ f <- system.file("extdata", "VNP46A3.A2023001.h25v04.002.2023040000000.h5",
 r <- ntl_read_bm(f)
 r
 terra::plot(log1p(r$value))
-\dontshow{\}) # examplesIf}
 }

@@ -24,6 +24,7 @@ Depends:
     R (>= 4.1.0)
 Imports:
     exactextractr,
+    hdf5r,
     httr2,
     sf,
     stats,
@@ -31,7 +32,6 @@ Imports:
     tools,
     utils
 Suggests:
-    hdf5r,
     knitr,
     rmarkdown,
     testthat (>= 3.0.0),

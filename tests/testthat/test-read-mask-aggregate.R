@@ -108,7 +108,6 @@ test_that("extraction runs over all periods with coverage diagnostics", {
 })
 
 test_that("the shipped example tile reads correctly", {
-  skip_if_not("HDF5" %in% terra::gdal(drivers = TRUE)$name)
   f <- system.file("extdata", "VNP46A3.A2023001.h25v04.002.2023040000000.h5",
                    package = "ntlpanel")
   r <- ntl_read_bm(f)

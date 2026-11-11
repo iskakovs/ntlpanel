@@ -23,11 +23,16 @@
 #'   \item{n_pixels}{Number of pixels covering the unit (fractional).}
 #' }
 #' @examples
-#' ex <- ntl_example()
-#' m <- ntl_files(ex$dir, "eog_vnl_monthly")
-#' r <- ntl_read(m, period = "2022-06", series = "eog_vnl_monthly_npp")
-#' r <- ntl_mask(r)
-#' ntl_aggregate(r, ex$units_old, id_col = "district")
+#' # A 4 x 4 raster with one unobserved pixel pair, split into two units
+#' r <- terra::rast(xmin = 0, xmax = 2, ymin = 0, ymax = 2, nrows = 4,
+#'                  ncols = 4, crs = "EPSG:4326", names = "value")
+#' terra::values(r) <- c(1, 2, 3, 4, 5, 6, 7, 8, NA, NA, 0, 0, 1, 1, 0, 0)
+#' units <- sf::st_as_sf(terra::vect(c(
+#'   "POLYGON ((0 0, 1 0, 1 2, 0 2, 0 0))",
+#'   "POLYGON ((1 0, 2 0, 2 2, 1 2, 1 0))"
+#' ), crs = "EPSG:4326"))
+#' units$id <- c("west", "east")
+#' ntl_aggregate(r, units, id_col = "id")
 #' @export
 ntl_aggregate <- function(x, units, id_col = NULL) {
   if (!inherits(x, "SpatRaster") || !"value" %in% names(x)) {

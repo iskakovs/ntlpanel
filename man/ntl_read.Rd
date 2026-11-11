@@ -28,7 +28,8 @@ single series.}
 (\code{NearNadir_Composite_Snow_Free}). Count and quality layers are
 \verb{<variable>_Num} and \verb{<variable>_Quality}.}
 
-\item{flip}{\code{NA} (automatic), \code{TRUE} or \code{FALSE}.}
+\item{flip}{\code{NA} (automatic), \code{TRUE} (flip the stored grid vertically) or
+\code{FALSE} (use the stored row order as is).}
 }
 \value{
 A \code{SpatRaster} with layers \code{value} and, where available, \code{nobs}

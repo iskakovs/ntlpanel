@@ -1,5 +1,9 @@
 # ntlpanel (development version)
 
+* `ntl_read_bm()` now reads Black Marble tiles with hdf5r instead of GDAL.
+  Recent GDAL versions return these grids upside down, which flipped tiles
+  on R 4.5 and 4.6. hdf5r moves from Suggests to Imports. Fill values,
+  `scale_factor` and `add_offset` are taken from the dataset attributes.
 * Downloads now go to a temporary folder by default; set `NTLPANEL_CACHE` or
   the `ntlpanel.cache_dir` option to keep them between sessions.
 * New `ntl_cache_info()`; `ntl_cache_clear(all = TRUE)` empties the cache.
