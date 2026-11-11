@@ -1,0 +1,240 @@
+# ntlpanel
+
+**Nighttime lights to analysis-ready panels for econometrics.**
+
+`ntlpanel` turns nighttime lights rasters into balanced unit-by-period
+panels. Every observation records how much of the unit was actually
+observed. The steps that usually happen silently in a script become
+explicit and recorded:
+
+- **Sensor continuity.** NOAA ended Suomi NPP data delivery on 2
+  November 2026.
+  [`ntl_splice()`](https://iskakovs.github.io/ntlpanel/reference/ntl_splice.md)
+  puts Suomi NPP (`VNP46`) and NOAA-20 (`VJ146`) on one scale and
+  reports level shifts per unit, optionally per calendar month.
+- **Coverage.**
+  [`ntl_extract()`](https://iskakovs.github.io/ntlpanel/reference/ntl_extract.md)
+  reports `share_valid`, `share_masked` and `mean_obs` for each unit and
+  period, and keeps “dark” (0) separate from “unobserved” (`NA`).
+  [`ntl_gapfill()`](https://iskakovs.github.io/ntlpanel/reference/ntl_gapfill.md)
+  applies a documented rule to high-latitude summer gaps and flags the
+  cells at risk.
+- **Units and design.**
+  [`ntl_crosswalk()`](https://iskakovs.github.io/ntlpanel/reference/ntl_crosswalk.md)
+  moves official statistics between boundary vintages, for example
+  Kazakhstan’s 2022 regions.
+  [`ntl_exposure()`](https://iskakovs.github.io/ntlpanel/reference/ntl_exposure.md)
+  assigns distance rings and first-treatment dates for staggered
+  difference-in-differences designs.
+
+## Installation
+
+Install the development version from GitHub:
+
+``` r
+
+# install.packages("pak")
+pak::pak("iskakovs/ntlpanel")
+# or: remotes::install_github("iskakovs/ntlpanel")
+```
+
+The package depends on `terra`, `sf`, `exactextractr` and `httr2`.
+Reading Black Marble `.h5` files needs a GDAL build with HDF5 support,
+which the CRAN binaries of `terra` include. The optional `hdf5r` package
+lets
+[`ntl_read_bm()`](https://iskakovs.github.io/ntlpanel/reference/ntl_read_bm.md)
+check tile orientation automatically.
+
+## Quick start (offline, synthetic data)
+
+``` r
+
+library(ntlpanel)
+ex <- ntl_example()                               # synthetic files + polygons
+
+m    <- ntl_files(ex$dir, "eog_vnl_monthly")      # manifest of local files
+long <- ntl_extract(m, ex$units_old, id_col = "district", min_obs = 2)
+sp   <- ntl_splice(long, from = "eog_vnl_monthly_npp", to = "eog_vnl_monthly_j01")
+ntl_splice_report(sp)                             # level shift per district
+
+p <- ntl_panel(sp, min_share_valid = 0.5)         # balanced, log1p outcome, t index
+p <- ntl_gapfill(p, rule = "interp", units = ex$units_old, lat_threshold = 49)
+
+e <- ntl_exposure(ex$units_old, ex$sites, rings = c(50, 100, 200),
+                  id_col = "district", site_time_col = "start")
+```
+
+## Real data: Black Marble for Kazakhstan
+
+``` r
+
+# One-off: put your NASA Earthdata token in ~/.Renviron as EARTHDATA_TOKEN=...
+regions <- sf::st_read("kz_adm1_2022.gpkg")
+ntl_tiles(regions)                                # h22-h26 x v03-v04
+
+m_snpp <- ntl_fetch("VNP46A4", aoi = regions, start = 2014, end = 2025)
+m_j01  <- ntl_fetch("VJ146A4", aoi = regions, start = 2018, end = 2025)
+long   <- ntl_extract(rbind(m_snpp, m_j01), regions, id_col = "region")
+sp     <- ntl_splice(long, from = "VNP46A4", to = "VJ146A4")
+p      <- ntl_panel(sp)
+```
+
+Downloads go to a temporary folder unless you set a permanent one with
+`NTLPANEL_CACHE` in `~/.Renviron` (see
+[`?ntl_cache_dir`](https://iskakovs.github.io/ntlpanel/reference/ntl_cache_dir.md)).
+For monthly data, fetch and extract one year at a time and call
+[`ntl_cache_clear()`](https://iskakovs.github.io/ntlpanel/reference/ntl_cache_dir.md)
+in between. A monthly tile is about 50-130 MB.
+
+## Functions
+
+| Step | Functions |
+|----|----|
+| Find data | [`ntl_sources()`](https://iskakovs.github.io/ntlpanel/reference/ntl_sources.md), [`ntl_tiles()`](https://iskakovs.github.io/ntlpanel/reference/ntl_tiles.md), [`ntl_available()`](https://iskakovs.github.io/ntlpanel/reference/ntl_available.md) |
+| Get data | [`ntl_fetch()`](https://iskakovs.github.io/ntlpanel/reference/ntl_fetch.md) (LAADS: VNP46A3/A4, VJ146A3/A4), [`ntl_files()`](https://iskakovs.github.io/ntlpanel/reference/ntl_files.md) (EOG VNL, harmonized series, local `.h5`) |
+| Read and mask | [`ntl_read()`](https://iskakovs.github.io/ntlpanel/reference/ntl_read.md), [`ntl_read_bm()`](https://iskakovs.github.io/ntlpanel/reference/ntl_read_bm.md), [`ntl_mask()`](https://iskakovs.github.io/ntlpanel/reference/ntl_mask.md) |
+| Extract | [`ntl_extract()`](https://iskakovs.github.io/ntlpanel/reference/ntl_extract.md), [`ntl_aggregate()`](https://iskakovs.github.io/ntlpanel/reference/ntl_aggregate.md) |
+| Panel | [`ntl_splice()`](https://iskakovs.github.io/ntlpanel/reference/ntl_splice.md), [`ntl_splice_report()`](https://iskakovs.github.io/ntlpanel/reference/ntl_splice_report.md), [`ntl_panel()`](https://iskakovs.github.io/ntlpanel/reference/ntl_panel.md), [`ntl_gapfill()`](https://iskakovs.github.io/ntlpanel/reference/ntl_gapfill.md) |
+| Design | [`ntl_exposure()`](https://iskakovs.github.io/ntlpanel/reference/ntl_exposure.md), [`ntl_crosswalk()`](https://iskakovs.github.io/ntlpanel/reference/ntl_crosswalk.md), [`ntl_apply_crosswalk()`](https://iskakovs.github.io/ntlpanel/reference/ntl_apply_crosswalk.md) |
+| Utilities | [`ntl_cache_dir()`](https://iskakovs.github.io/ntlpanel/reference/ntl_cache_dir.md), [`ntl_cache_info()`](https://iskakovs.github.io/ntlpanel/reference/ntl_cache_dir.md), [`ntl_cache_clear()`](https://iskakovs.github.io/ntlpanel/reference/ntl_cache_dir.md), [`ntl_token()`](https://iskakovs.github.io/ntlpanel/reference/ntl_cache_dir.md), [`ntl_example()`](https://iskakovs.github.io/ntlpanel/reference/ntl_example.md) |
+
+## Supported products
+
+| id | What | Access |
+|----|----|----|
+| `VNP46A3`, `VNP46A4` | Black Marble monthly/annual, Suomi NPP (to Oct 2026) | [`ntl_fetch()`](https://iskakovs.github.io/ntlpanel/reference/ntl_fetch.md), token |
+| `VJ146A3`, `VJ146A4` | Black Marble monthly/annual, NOAA-20 | [`ntl_fetch()`](https://iskakovs.github.io/ntlpanel/reference/ntl_fetch.md), token |
+| `eog_vnl_monthly`, `eog_vnl_annual` | EOG VIIRS Nighttime Lights (npp, j01) with `cf_cvg` coverage | free EOG account, then [`ntl_files()`](https://iskakovs.github.io/ntlpanel/reference/ntl_files.md) |
+| `dmsp_viirs_li` | Li et al. (2020) harmonized DMSP-VIIRS, DN scale | figshare, [`ntl_files()`](https://iskakovs.github.io/ntlpanel/reference/ntl_files.md) |
+| `viirs_like_chen` | Chen et al. (2021) extended VIIRS-like series | Harvard Dataverse, [`ntl_files()`](https://iskakovs.github.io/ntlpanel/reference/ntl_files.md) |
+| `world_nightlights_regan` | Regan et al. corrected 1992-2023 series | GitHub, [`ntl_files()`](https://iskakovs.github.io/ntlpanel/reference/ntl_files.md) |
+
+## Related packages
+
+`ntlpanel` builds on existing tools rather than replacing them:
+
+| Package | What it does | How ntlpanel differs |
+|----|----|----|
+| [blackmarbler](https://worldbank.github.io/blackmarbler/) (CRAN, World Bank) | Downloads Black Marble tiles from LAADS, mosaics them and computes zonal statistics | Also reads the NOAA-20 `VJ146` products (blackmarbler accepted only Suomi NPP product ids at the time of writing). Adds per-observation coverage diagnostics, cross-sensor splicing, gap rules, balanced panels and boundary crosswalks. Use blackmarbler for the daily products (`VNP46A1/A2`), which ntlpanel does not cover. |
+| [nightlightstats](https://github.com/JakobMie/nightlightstats) (GitHub) | DMSP and VIIRS statistics per GADM region | Covers Black Marble and EOG products with coverage counts, and makes panels with any boundaries |
+| Rnightlights | DMSP/VIIRS download and zonal statistics | Archived on CRAN since 2019 |
+| [rgee](https://github.com/r-spatial/rgee) | General interface to Google Earth Engine through Python | No Python or Earth Engine account needed; focused on nighttime lights panels |
+| [exactextractr](https://github.com/isciences/exactextractr), [terra](https://github.com/rspatial/terra), [sf](https://github.com/r-spatial/sf) | Raster and vector building blocks | ntlpanel uses them for reading, masking and exact zonal statistics |
+
+## Citation
+
+Run `citation("ntlpanel")` for the citation of the package. Please also
+cite the data products you use (see the `url` column of
+[`ntl_sources()`](https://iskakovs.github.io/ntlpanel/reference/ntl_sources.md)).
+
+## Contributing
+
+Bug reports and pull requests are welcome; see
+[CONTRIBUTING.md](https://iskakovs.github.io/ntlpanel/CONTRIBUTING.md).
+Never paste your NASA Earthdata token into an issue.
+
+## Status and validation
+
+Version 0.1.0.9000 passes `R CMD check` and its test suite, which runs
+offline on synthetic rasters, HDF5 fixtures and mocked LAADS responses.
+Two parts have **not yet been run against live data**:
+
+1.  **Downloads.** Authenticated downloads in
+    [`ntl_fetch()`](https://iskakovs.github.io/ntlpanel/reference/ntl_fetch.md).
+    The URL layout and listing format were checked against the live
+    archive, and the whole download path is tested with mocked
+    responses.
+2.  **Tile orientation.** Orientation handling with real Black Marble
+    files. Some GDAL builds return tiles upside down, and
+    [`ntl_read_bm()`](https://iskakovs.github.io/ntlpanel/reference/ntl_read_bm.md)
+    checks for this.
+
+Run
+`system.file("scripts", "validate_splice_kz.R", package = "ntlpanel")`
+first. It checks orientation on a known city and measures the Suomi NPP
+to NOAA-20 level shift across Kazakhstan’s regions and calendar months.
+
+## Roadmap
+
+- Optional Google Earth Engine back-end for server-side zonal
+  statistics.
+- NOAA-21 products once they are available on LAADS.
+- Network distances in
+  [`ntl_exposure()`](https://iskakovs.github.io/ntlpanel/reference/ntl_exposure.md)
+  (via `dodgr`).
+- H3 grid helpers built on `h3o`.
+
+## License
+
+MIT (c) Serik Iskakov
+
+# Package index
+
+## Find data
+
+- [`ntl_sources()`](https://iskakovs.github.io/ntlpanel/reference/ntl_sources.md)
+  : Supported nighttime lights products
+- [`ntl_tiles()`](https://iskakovs.github.io/ntlpanel/reference/ntl_tiles.md)
+  : Black Marble tiles covering an area of interest
+- [`ntl_available()`](https://iskakovs.github.io/ntlpanel/reference/ntl_available.md)
+  : Check which periods and tiles are available on NASA LAADS
+
+## Get data
+
+- [`ntl_fetch()`](https://iskakovs.github.io/ntlpanel/reference/ntl_fetch.md)
+  : Download Black Marble tiles from NASA LAADS
+- [`ntl_files()`](https://iskakovs.github.io/ntlpanel/reference/ntl_files.md)
+  : Index nighttime lights files you already have
+- [`ntl_cache_dir()`](https://iskakovs.github.io/ntlpanel/reference/ntl_cache_dir.md)
+  [`ntl_cache_info()`](https://iskakovs.github.io/ntlpanel/reference/ntl_cache_dir.md)
+  [`ntl_cache_clear()`](https://iskakovs.github.io/ntlpanel/reference/ntl_cache_dir.md)
+  [`ntl_token()`](https://iskakovs.github.io/ntlpanel/reference/ntl_cache_dir.md)
+  : Cache directory, cache management and credentials
+
+## Read and mask
+
+- [`ntl_read()`](https://iskakovs.github.io/ntlpanel/reference/ntl_read.md)
+  : Read one period of a manifest as a raster
+- [`ntl_read_bm()`](https://iskakovs.github.io/ntlpanel/reference/ntl_read_bm.md)
+  : Read a Black Marble HDF5 tile
+- [`ntl_mask()`](https://iskakovs.github.io/ntlpanel/reference/ntl_mask.md)
+  : Mask low-quality, under-observed and gas-flare pixels
+
+## Extract
+
+- [`ntl_extract()`](https://iskakovs.github.io/ntlpanel/reference/ntl_extract.md)
+  : Extract nighttime lights for many periods
+- [`ntl_aggregate()`](https://iskakovs.github.io/ntlpanel/reference/ntl_aggregate.md)
+  : Zonal statistics with coverage diagnostics
+
+## Build panels
+
+- [`ntl_splice()`](https://iskakovs.github.io/ntlpanel/reference/ntl_splice.md)
+  : Splice two sensors into one consistent series
+- [`ntl_splice_report()`](https://iskakovs.github.io/ntlpanel/reference/ntl_splice_report.md)
+  : Diagnostics of a splice
+- [`ntl_panel()`](https://iskakovs.github.io/ntlpanel/reference/ntl_panel.md)
+  : Build a balanced, analysis-ready panel
+- [`ntl_gapfill()`](https://iskakovs.github.io/ntlpanel/reference/ntl_gapfill.md)
+  : Handle missing and low-coverage observations explicitly
+
+## Design variables
+
+- [`ntl_exposure()`](https://iskakovs.github.io/ntlpanel/reference/ntl_exposure.md)
+  : Distance-ring treatment exposure
+- [`ntl_crosswalk()`](https://iskakovs.github.io/ntlpanel/reference/ntl_crosswalk.md)
+  : Crosswalk between two boundary vintages
+- [`ntl_apply_crosswalk()`](https://iskakovs.github.io/ntlpanel/reference/ntl_apply_crosswalk.md)
+  : Apply a boundary crosswalk to tabular data
+
+## Example data
+
+- [`ntl_example()`](https://iskakovs.github.io/ntlpanel/reference/ntl_example.md)
+  : Synthetic example data
+
+# Articles
+
+### All vignettes
+
+- [From nighttime lights rasters to an econometrics-ready
+  panel](https://iskakovs.github.io/ntlpanel/articles/ntlpanel.md):
