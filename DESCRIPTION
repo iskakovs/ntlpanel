@@ -4,7 +4,7 @@ Title: Nighttime Lights to Analysis-Ready Panels for Econometrics
 Version: 0.1.0.9000
 Authors@R:
     person("Serik", "Iskakov", email = "s.iskakov@gmail.com",
-           role = c("aut", "cre"))
+           role = c("aut", "cre"), comment = c(ORCID = "0009-0003-8013-5377"))
 Description: Turns satellite nighttime lights products (NASA Black Marble
     from Suomi NPP 'VNP46' and NOAA-20 'VJ146', Earth Observation Group
     VIIRS Nighttime Lights, and harmonized DMSP-VIIRS series) into balanced
