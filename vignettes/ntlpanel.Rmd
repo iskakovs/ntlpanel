@@ -1,0 +1,204 @@
+---
+title: "From nighttime lights rasters to an econometrics-ready panel"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{From nighttime lights rasters to an econometrics-ready panel}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 6.5, fig.height = 3.6)
+```
+
+Downloading nighttime lights is a solved problem. Turning them into a panel
+you can defend in a referee report is not. Three problems come up in almost
+every applied project, and they matter most at high latitude:
+
+1. **Sensor continuity.** NOAA ended Suomi NPP data delivery on 2 November
+   2026. Any VIIRS series that runs past October 2026 has to switch to NOAA-20,
+   and the switch must not show up as a fake shock.
+2. **Coverage.** Around the June solstice VIIRS cannot observe northern
+   Kazakhstan at night. A monthly sum over the pixels that remain mixes
+   "dark" with "unobserved".
+3. **Units.** Boundaries change (Kazakhstan created Abai, Zhetysu and Ulytau
+   in 2022), and treatment is often defined by distance to a site.
+
+`ntlpanel` makes each of these an explicit, recorded step. This vignette runs
+the whole workflow on the **synthetic** data shipped with the package, which
+mimics these problems, and ends with the code for a real Kazakhstan panel.
+
+```{r}
+library(ntlpanel)
+ex <- ntl_example()
+```
+
+## 1. Index the files
+
+`ntl_sources()` lists the supported products. Black Marble products can be
+downloaded with `ntl_fetch()`. Other products, such as these EOG-format
+monthly composites, are indexed with `ntl_files()`.
+
+```{r}
+ntl_sources()[, c("id", "frequency", "backend")]
+m <- ntl_files(ex$dir, "eog_vnl_monthly")
+m
+table(m$series)
+```
+
+Each EOG file is paired with its cloud-free coverage (`cf_cvg`) file. The
+two platforms, Suomi NPP (`npp`) and NOAA-20 (`j01`), become separate series.
+
+## 2. Extract with coverage diagnostics
+
+`ntl_extract()` reads one period at a time, masks pixels and computes exact
+zonal statistics. `min_obs = 2` drops pixels with fewer than two
+cloud-free observations. Pixels with zero observations are always treated as
+unobserved, even though EOG files store 0 radiance there.
+
+```{r}
+long <- ntl_extract(m, ex$units_old, id_col = "district", min_obs = 2, quiet = TRUE)
+long[long$period == as.Date("2022-06-01"),
+     c("district", "series", "ntl_sum", "share_valid", "share_masked", "mean_obs")]
+```
+
+In June the three northern districts have `share_valid = 0` and
+`ntl_sum = NA`, not 0. The southern districts are fully observed.
+
+## 3. Splice the two satellites
+
+The NOAA-20 series reads about 8% brighter. `ntl_splice()` estimates the
+relationship on overlap months, rescales Suomi NPP to the NOAA-20 level and
+switches to NOAA-20 from its first month.
+
+```{r}
+sp <- ntl_splice(long, from = "eog_vnl_monthly_npp", to = "eog_vnl_monthly_j01")
+ntl_splice_report(sp)[, c("district", "n_overlap", "level_shift_pct", "cor", "ratio_cv", "b")]
+```
+
+`level_shift_pct` is the gap between sensors. A large or unit-specific shift,
+or a high `ratio_cv` (an unstable month-to-month ratio), means the splice
+needs care. With `by_month = TRUE` the calibration is estimated separately
+for each calendar month.
+
+```{r, fig.alt = "Raw and spliced series for district D5"}
+d5 <- long[long$district == "D5", ]
+s5 <- sp[sp$district == "D5", ]
+plot(s5$period, s5$ntl_sum, type = "l", lwd = 2, xlab = "", ylab = "Sum of lights",
+     main = "District D5: raw sensors and spliced series")
+for (s in unique(d5$series)) {
+  z <- d5[d5$series == s, ]
+  lines(z$period, z$ntl_sum, lty = 2, col = if (grepl("j01", s)) "firebrick" else "steelblue")
+}
+legend("topleft", c("spliced", "Suomi NPP (raw)", "NOAA-20 (raw)"), lty = c(1, 2, 2),
+       col = c("black", "steelblue", "firebrick"), bty = "n", cex = 0.8)
+```
+
+## 4. Build the panel and decide what to do with gaps
+
+`ntl_panel()` balances the panel and adds time indices and a transformed
+outcome. `min_share_valid` turns poorly observed cells into explicit
+missing values.
+
+```{r}
+p <- ntl_panel(sp, min_share_valid = 0.5, transform = "log1p")
+p
+```
+
+`ntl_gapfill()` applies one rule and records it. It also flags the
+unit-months at risk of stray-light gaps.
+
+```{r}
+p_int <- ntl_gapfill(p, rule = "interp", max_gap = 2,
+                     units = ex$units_old, lat_threshold = 49)
+attr(p_int, "gap_report")
+table(imputed = p_int$imputed, risk = p_int$stray_light_risk)
+```
+
+All 18 missing northern summer cells are bridged by interpolation and
+flagged as imputed, so results can be checked with and without them. The
+seasonal rule cannot fill them, because June and July are never observed in
+the north. That is the honest answer. The alternatives are to interpolate
+(as above), to drop those months, or to work with annual data.
+
+## 5. Add treatment exposure
+
+Two synthetic sites switch on in June 2022 and March 2023.
+`ntl_exposure()` gives each district its distance ring and the first
+treatment date within the largest ring. That date is the cohort variable
+for staggered difference-in-differences estimators.
+
+```{r}
+e <- ntl_exposure(ex$units_old, ex$sites, rings = c(50, 100, 200),
+                  id_col = "district", site_id_col = "site", site_time_col = "start")
+e
+```
+
+```{r}
+panel <- merge(as.data.frame(p_int), e[, c("district", "within_50km", "first_treat")],
+               by = "district")
+panel$post <- !is.na(panel$first_treat) & panel$period >= panel$first_treat
+panel$treated <- panel$post & panel$within_50km
+fit <- lm(ntl ~ treated + factor(district) + factor(period), data = panel,
+          subset = !imputed)
+coef(summary(fit))["treatedTRUE", ]
+```
+
+With fixest you would write
+`feols(ntl ~ treated | district + t, data = panel[!panel$imputed, ], cluster = ~district)`.
+For staggered adoption, pass `first_treat` to `did::att_gt()`.
+
+## 6. Move official statistics across boundary vintages
+
+Nighttime lights never need a crosswalk: you re-extract them with the new
+boundaries. Official statistics often exist in only one vintage, though.
+`ntl_crosswalk()` builds weights (area, or lights as below) and
+`ntl_apply_crosswalk()` applies them.
+
+```{r}
+lights <- ntl_read(m, period = "2022-01", series = "eog_vnl_monthly_npp")$value
+xw <- ntl_crosswalk(ex$units_old, ex$units_new, "district", "district_new",
+                    weight_raster = lights)
+xw
+stats <- data.frame(district = ex$units_old$district, year = 2022,
+                    employment = c(120, 80, 60, 150, 90, 40),
+                    unemployment_rate = c(5, 7, 6, 4, 8, 9))
+ntl_apply_crosswalk(stats, xw, "district", vars = c("employment", "unemployment_rate"),
+                    type = c("extensive", "intensive"), by = "year")
+```
+
+## 7. The real thing: Kazakhstan with Black Marble
+
+The code below is not run when the vignette is built. It needs a NASA
+Earthdata token in `EARTHDATA_TOKEN` and region boundaries in the 2022
+vintage (17 regions plus the cities of national significance). A monthly
+Black Marble tile is roughly 50-130 MB and Kazakhstan needs 10 of them, so
+the loop downloads one year at a time and clears the cache after each year.
+
+```{r, eval = FALSE}
+library(sf)
+regions <- st_read("kz_adm1_2022.gpkg")        # your boundaries, column "region"
+ntl_tiles(regions)                             # 10 tiles: h22-h26, v03-v04
+
+extract_year <- function(product, year) {
+  m <- ntl_fetch(product, aoi = regions, start = paste0(year, "-01"),
+                 end = paste0(year, "-12"))
+  out <- ntl_extract(m, regions, id_col = "region", quality_max = 1)
+  ntl_cache_clear(m)
+  out
+}
+snpp <- do.call(rbind, lapply(2014:2026, function(y) extract_year("VNP46A3", y)))
+j01  <- do.call(rbind, lapply(2018:2026, function(y) extract_year("VJ146A3", y)))
+
+sp <- ntl_splice(rbind(snpp, j01), from = "VNP46A3", to = "VJ146A3",
+                 by_month = TRUE, min_share_valid = 0.8)
+ntl_splice_report(sp)
+
+p <- ntl_panel(sp, min_share_valid = 0.6)
+p <- ntl_gapfill(p, rule = "interp", max_gap = 2, units = regions, lat_threshold = 45)
+```
+
+Before you commit to a long monthly series, run
+`system.file("scripts", "validate_splice_kz.R", package = "ntlpanel")`. It
+checks tile orientation and whether the Suomi NPP to NOAA-20 shift is
+stable across Kazakhstan's regions and seasons.
