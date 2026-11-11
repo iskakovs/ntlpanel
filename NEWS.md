@@ -1,3 +1,18 @@
+# ntlpanel (development version)
+
+* Downloads now go to a temporary folder by default; set `NTLPANEL_CACHE` or
+  the `ntlpanel.cache_dir` option to keep them between sessions.
+* New `ntl_cache_info()`; `ntl_cache_clear(all = TRUE)` empties the cache.
+* A small example Black Marble tile ships in `inst/extdata`, so
+  `ntl_read_bm()` has a runnable example.
+* Examples that need the internet or a token use `@examplesIf` instead of
+  `\dontrun{}`.
+* Internal refactoring of `ntl_fetch()`, `ntl_splice()`, `ntl_gapfill()`,
+  `ntl_mask()` and `ntl_crosswalk()` into smaller helpers; code follows an
+  80-character line limit.
+* Added `CITATION`, contributing guidelines, a pkgdown configuration and
+  GitHub Actions workflows (R CMD check, pkgcheck, pkgdown, coverage).
+
 # ntlpanel 0.1.0
 
 First version.

@@ -37,7 +37,8 @@ print.ntl_manifest <- function(x, ...) {
       " series, periods ", format(rng[1]), " to ", format(rng[2]), sep = "")
   if (n_missing > 0) cat(", ", n_missing, " missing tile-period(s)", sep = "")
   cat("\n")
-  show <- utils::head(y[, c("series", "period_label", "tile", "status", "file")], 10)
+  cols <- c("series", "period_label", "tile", "status", "file")
+  show <- utils::head(y[, cols], 10)
   show$file <- basename(show$file)
   print(show, row.names = FALSE)
   if (nrow(y) > 10) cat("... ", nrow(y) - 10, " more row(s)\n", sep = "")
@@ -49,7 +50,8 @@ print.ntl_manifest <- function(x, ...) {
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
   stamp <- format(Sys.time(), "%Y%m%dT%H%M%S")
   rng <- range(manifest$period)
-  name <- sprintf("%s_%s_%s_%s.csv", paste(unique(manifest$product), collapse = "-"),
+  products <- paste(unique(manifest$product), collapse = "-")
+  name <- sprintf("%s_%s_%s_%s.csv", products,
                   format(rng[1], "%Y%m"), format(rng[2], "%Y%m"), stamp)
   path <- file.path(dir, name)
   out <- manifest

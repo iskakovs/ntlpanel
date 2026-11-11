@@ -28,7 +28,8 @@ ntl_tiles <- function(aoi, refine = TRUE) {
   grid <- expand.grid(h = seq.int(h_min, h_max), v = seq.int(v_min, v_max))
   grid$tile <- sprintf("h%02dv%02d", grid$h, grid$v)
   ext <- .bm_tile_extent(grid$tile)
-  out <- cbind(grid[, c("tile", "h", "v")], ext[, c("xmin", "xmax", "ymin", "ymax")])
+  out <- cbind(grid[, c("tile", "h", "v")],
+               ext[, c("xmin", "xmax", "ymin", "ymax")])
   if (isTRUE(refine) && nrow(out) > 1) {
     polys <- lapply(seq_len(nrow(out)), function(i) {
       sf::st_polygon(list(matrix(c(

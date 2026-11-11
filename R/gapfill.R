@@ -40,12 +40,14 @@
 #' @examples
 #' ex <- ntl_example()
 #' m <- ntl_files(ex$dir, "eog_vnl_monthly")
-#' m <- m[m$series == "eog_vnl_monthly_npp" & m$period < as.Date("2022-01-01"), ]
-#' long <- ntl_extract(m, ex$units_old,
-#'                     id_col = "district", quiet = TRUE)
+#' m <- m[m$series == "eog_vnl_monthly_npp" &
+#'          m$period < as.Date("2022-01-01"), ]
+#' long <- ntl_extract(m, ex$units_old, id_col = "district", quiet = TRUE)
 #' p <- ntl_panel(long, min_share_valid = 0.5)
-#' p2 <- ntl_gapfill(p, rule = "interp", max_gap = 2,
-#'                   units = ex$units_old, lat_threshold = 48)
+#' p2 <- ntl_gapfill(p,
+#'   rule = "interp", max_gap = 2,
+#'   units = ex$units_old, lat_threshold = 48
+#' )
 #' attr(p2, "gap_report")
 #' @export
 ntl_gapfill <- function(panel, rule = c("interp", "seasonal", "drop", "none"),
@@ -53,63 +55,69 @@ ntl_gapfill <- function(panel, rule = c("interp", "seasonal", "drop", "none"),
                         months = 5:8) {
   rule <- match.arg(rule)
   a <- .panel_attrs(panel)
+  if (rule == "seasonal" && a$frequency != "month") {
+    .stop("rule = 'seasonal' needs a monthly panel.")
+  }
   df <- panel
   class(df) <- "data.frame"
   .check_cols(df, c(a$id_col, "period", a$value), "panel")
   df <- df[order(df[[a$id_col]], df$period), , drop = FALSE]
-  if (!"month" %in% names(df)) df$month <- as.integer(format(df$period, "%m"))
-  if (!"year" %in% names(df)) df$year <- as.integer(format(df$period, "%Y"))
-
+  df$month <- as.integer(format(df$period, "%m"))
+  df$year <- as.integer(format(df$period, "%Y"))
   if (!is.null(units) && !is.null(lat_threshold)) {
-    u <- .to_lonlat(.as_sf(units, "units"))
-    ids <- .unit_ids(u, a$id_col)
-    pts <- suppressWarnings(sf::st_point_on_surface(sf::st_geometry(u)))
-    lat <- sf::st_coordinates(pts)[, "Y"]
-    df$lat <- lat[match(df[[a$id_col]], ids)]
-    df$stray_light_risk <- !is.na(df$lat) & df$lat >= lat_threshold &
-      a$frequency == "month" & df$month %in% months
+    df <- .flag_stray_light(df, units, a, lat_threshold, months)
   }
-
   before <- .gap_counts(df, a$value)
   if (!"imputed" %in% names(df)) df$imputed <- FALSE
   if (!"impute_method" %in% names(df)) df$impute_method <- NA_character_
-
   if (rule == "drop") {
     df <- df[!is.na(df[[a$value]]), , drop = FALSE]
-  } else if (rule %in% c("interp", "seasonal")) {
-    if (rule == "seasonal" && a$frequency != "month") {
-      .stop("rule = 'seasonal' needs a monthly panel.")
-    }
-    idx <- split(seq_len(nrow(df)), df[[a$id_col]])
-    for (ii in idx) {
-      v <- df[[a$value]][ii]
-      filled <- if (rule == "interp") {
-        .interp_gaps(v, max_gap)
-      } else {
-        .seasonal_fill(v, df$year[ii], df$month[ii])
-      }
-      new <- is.na(v) & !is.na(filled)
-      if (any(new)) {
-        df[[a$value]][ii[new]] <- filled[new]
-        df$imputed[ii[new]] <- TRUE
-        df$impute_method[ii[new]] <- rule
-      }
-    }
+  } else if (rule != "none") {
+    df <- .fill_by_unit(df, a, rule, max_gap)
   }
   df$ntl <- .transform_values(df[[a$value]], a$transform)
   df$ntl_missing <- is.na(df[[a$value]])
-  after <- .gap_counts(df, a$value)
   rownames(df) <- NULL
   out <- .new_panel(df, a$id_col, a$value, a$frequency, a$transform)
-  rep <- merge(before, after, by = "month", all = TRUE, suffixes = c("_before", "_after"))
-  attr(out, "gap_report") <- rep
+  attr(out, "gap_report") <- merge(before, .gap_counts(df, a$value),
+                                   by = "month", all = TRUE,
+                                   suffixes = c("_before", "_after"))
   out
+}
+
+.flag_stray_light <- function(df, units, a, lat_threshold, months) {
+  u <- .to_lonlat(.as_sf(units, "units"))
+  ids <- .unit_ids(u, a$id_col)
+  pts <- suppressWarnings(sf::st_point_on_surface(sf::st_geometry(u)))
+  lat <- sf::st_coordinates(pts)[, "Y"]
+  df$lat <- lat[match(df[[a$id_col]], ids)]
+  df$stray_light_risk <- !is.na(df$lat) & df$lat >= lat_threshold &
+    a$frequency == "month" & df$month %in% months
+  df
+}
+
+.fill_by_unit <- function(df, a, rule, max_gap) {
+  idx <- split(seq_len(nrow(df)), df[[a$id_col]])
+  for (ii in idx) {
+    v <- df[[a$value]][ii]
+    filled <- if (rule == "interp") {
+      .interp_gaps(v, max_gap)
+    } else {
+      .seasonal_fill(v, df$year[ii], df$month[ii])
+    }
+    new <- is.na(v) & !is.na(filled)
+    if (any(new)) {
+      df[[a$value]][ii[new]] <- filled[new]
+      df$imputed[ii[new]] <- TRUE
+      df$impute_method[ii[new]] <- rule
+    }
+  }
+  df
 }
 
 .gap_counts <- function(df, value) {
   mo <- as.integer(format(df$period, "%m"))
-  out <- stats::aggregate(list(missing = is.na(df[[value]])), list(month = mo), sum)
-  out
+  stats::aggregate(list(missing = is.na(df[[value]])), list(month = mo), sum)
 }
 
 .interp_gaps <- function(v, max_gap) {
@@ -124,39 +132,47 @@ ntl_gapfill <- function(panel, rule = c("interp", "seasonal", "drop", "none"),
     s <- starts[k]
     e <- ends[k]
     if (s == 1 || e == n || (e - s + 1) > max_gap) next
-    out[s:e] <- stats::approx(c(s - 1, e + 1), v[c(s - 1, e + 1)], xout = s:e)$y
+    out[s:e] <- stats::approx(c(s - 1, e + 1), v[c(s - 1, e + 1)],
+                              xout = s:e)$y
   }
   out
 }
 
-# Multiplicative seasonal fill: value = S[month] * L[year], estimated from the
-# observed cells of one unit by alternating between the seasonal index S
-# (median ratio to the annual level, normalised to mean 1) and the
-# deseasonalised annual level L.
+# Multiplicative seasonal fill: value = season[month] * level[year],
+# estimated from the observed cells of one unit by alternating between the
+# seasonal index (median ratio to the annual level, normalised to mean 1)
+# and the deseasonalised annual level.
 .seasonal_fill <- function(v, year, month, max_iter = 200, tol = 1e-12) {
   ok <- !is.na(v)
   if (sum(ok) < 3) return(v)
   mk <- as.character(month)
   yk <- as.character(year)
-  S <- stats::setNames(rep(1, 12), as.character(1:12))
+  season <- stats::setNames(rep(1, 12), as.character(1:12))
   for (it in seq_len(max_iter)) {
-    S_prev <- S
-    L <- tapply(v[ok] / S[mk[ok]], yk[ok], mean, na.rm = TRUE)
-    ratio <- v[ok] / L[yk[ok]]
-    ratio[!is.finite(ratio)] <- NA
-    Sm <- tapply(ratio, mk[ok], stats::median, na.rm = TRUE)
-    S <- stats::setNames(rep(NA_real_, 12), as.character(1:12))
-    S[names(Sm)] <- Sm
-    S[!is.finite(S)] <- NA
-    if (all(is.na(S))) return(v)
-    S <- S / mean(S, na.rm = TRUE)
-    S[!is.na(S) & S == 0] <- NA
-    delta <- abs(S - S_prev)
+    previous <- season
+    season <- .seasonal_index(v[ok], mk[ok], yk[ok], season)
+    if (all(is.na(season))) return(v)
+    delta <- abs(season - previous)
     if (it > 1 && all(is.na(delta) | delta < tol)) break
   }
-  L <- tapply(v[ok] / S[mk[ok]], yk[ok], mean, na.rm = TRUE)
-  fill <- unname(S[mk] * L[yk])
+  level <- tapply(v[ok] / season[mk[ok]], yk[ok], mean, na.rm = TRUE)
+  fill <- unname(season[mk] * level[yk])
   out <- v
   out[!ok] <- fill[!ok]
+  out
+}
+
+# One update of the seasonal index given the current one.
+.seasonal_index <- function(v, mk, yk, season) {
+  level <- tapply(v / season[mk], yk, mean, na.rm = TRUE)
+  ratio <- v / level[yk]
+  ratio[!is.finite(ratio)] <- NA
+  by_month <- tapply(ratio, mk, stats::median, na.rm = TRUE)
+  out <- stats::setNames(rep(NA_real_, 12), as.character(1:12))
+  out[names(by_month)] <- by_month
+  out[!is.finite(out)] <- NA
+  if (all(is.na(out))) return(out)
+  out <- out / mean(out, na.rm = TRUE)
+  out[!is.na(out) & out == 0] <- NA
   out
 }

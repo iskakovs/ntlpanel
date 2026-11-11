@@ -31,6 +31,15 @@ first-treatment dates. \code{\link[=ntl_crosswalk]{ntl_crosswalk()}} and \code{\
 move tabular data between boundary vintages.
 }
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/iskakovs/ntlpanel}
+  \item \url{https://iskakovs.github.io/ntlpanel/}
+  \item Report bugs at \url{https://github.com/iskakovs/ntlpanel/issues}
+}
+
+}
 \author{
 \strong{Maintainer}: Serik Iskakov \email{s.iskakov@gmail.com}
 

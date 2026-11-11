@@ -66,11 +66,13 @@ you can run robustness checks with and without them.
 \examples{
 ex <- ntl_example()
 m <- ntl_files(ex$dir, "eog_vnl_monthly")
-m <- m[m$series == "eog_vnl_monthly_npp" & m$period < as.Date("2022-01-01"), ]
-long <- ntl_extract(m, ex$units_old,
-                    id_col = "district", quiet = TRUE)
+m <- m[m$series == "eog_vnl_monthly_npp" &
+         m$period < as.Date("2022-01-01"), ]
+long <- ntl_extract(m, ex$units_old, id_col = "district", quiet = TRUE)
 p <- ntl_panel(long, min_share_valid = 0.5)
-p2 <- ntl_gapfill(p, rule = "interp", max_gap = 2,
-                  units = ex$units_old, lat_threshold = 48)
+p2 <- ntl_gapfill(p,
+  rule = "interp", max_gap = 2,
+  units = ex$units_old, lat_threshold = 48
+)
 attr(p2, "gap_report")
 }

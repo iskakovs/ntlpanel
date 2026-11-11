@@ -1,5 +1,11 @@
 # ntlpanel
 
+<!-- badges: start -->
+[![R-CMD-check](https://github.com/iskakovs/ntlpanel/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/iskakovs/ntlpanel/actions/workflows/R-CMD-check.yaml)
+[![pkgcheck](https://github.com/iskakovs/ntlpanel/actions/workflows/pkgcheck.yaml/badge.svg)](https://github.com/iskakovs/ntlpanel/actions/workflows/pkgcheck.yaml)
+[![Project Status: WIP](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#wip)
+<!-- badges: end -->
+
 **Nighttime lights to analysis-ready panels for econometrics.**
 
 `ntlpanel` turns nighttime lights rasters into balanced unit-by-period panels.
@@ -20,9 +26,12 @@ steps that usually happen silently in a script become explicit and recorded:
 
 ## Installation
 
+Install the development version from GitHub:
+
 ```r
-# From the source tarball
-install.packages("ntlpanel_0.1.0.tar.gz", repos = NULL, type = "source")
+# install.packages("pak")
+pak::pak("iskakovs/ntlpanel")
+# or: remotes::install_github("iskakovs/ntlpanel")
 ```
 
 The package depends on `terra`, `sf`, `exactextractr` and `httr2`. Reading
@@ -62,8 +71,10 @@ sp     <- ntl_splice(long, from = "VNP46A4", to = "VJ146A4")
 p      <- ntl_panel(sp)
 ```
 
-For monthly data, fetch and extract one year at a time and call
-`ntl_cache_clear()` in between. A monthly tile is about 50-130 MB.
+Downloads go to a temporary folder unless you set a permanent one with
+`NTLPANEL_CACHE` in `~/.Renviron` (see `?ntl_cache_dir`). For monthly data,
+fetch and extract one year at a time and call `ntl_cache_clear()` in
+between. A monthly tile is about 50-130 MB.
 
 ## Functions
 
@@ -75,7 +86,7 @@ For monthly data, fetch and extract one year at a time and call
 | Extract | `ntl_extract()`, `ntl_aggregate()` |
 | Panel | `ntl_splice()`, `ntl_splice_report()`, `ntl_panel()`, `ntl_gapfill()` |
 | Design | `ntl_exposure()`, `ntl_crosswalk()`, `ntl_apply_crosswalk()` |
-| Utilities | `ntl_cache_dir()`, `ntl_cache_clear()`, `ntl_token()`, `ntl_example()` |
+| Utilities | `ntl_cache_dir()`, `ntl_cache_info()`, `ntl_cache_clear()`, `ntl_token()`, `ntl_example()` |
 
 ## Supported products
 
@@ -88,9 +99,32 @@ For monthly data, fetch and extract one year at a time and call
 | `viirs_like_chen` | Chen et al. (2021) extended VIIRS-like series | Harvard Dataverse, `ntl_files()` |
 | `world_nightlights_regan` | Regan et al. corrected 1992-2023 series | GitHub, `ntl_files()` |
 
+## Related packages
+
+`ntlpanel` builds on existing tools rather than replacing them:
+
+| Package | What it does | How ntlpanel differs |
+|---|---|---|
+| [blackmarbler](https://worldbank.github.io/blackmarbler/) (CRAN, World Bank) | Downloads Black Marble tiles from LAADS, mosaics them and computes zonal statistics | Also reads the NOAA-20 `VJ146` products (blackmarbler accepted only Suomi NPP product ids at the time of writing). Adds per-observation coverage diagnostics, cross-sensor splicing, gap rules, balanced panels and boundary crosswalks. Use blackmarbler for the daily products (`VNP46A1/A2`), which ntlpanel does not cover. |
+| [nightlightstats](https://github.com/JakobMie/nightlightstats) (GitHub) | DMSP and VIIRS statistics per GADM region | Covers Black Marble and EOG products with coverage counts, and makes panels with any boundaries |
+| Rnightlights | DMSP/VIIRS download and zonal statistics | Archived on CRAN since 2019 |
+| [rgee](https://github.com/r-spatial/rgee) | General interface to Google Earth Engine through Python | No Python or Earth Engine account needed; focused on nighttime lights panels |
+| [exactextractr](https://github.com/isciences/exactextractr), [terra](https://github.com/rspatial/terra), [sf](https://github.com/r-spatial/sf) | Raster and vector building blocks | ntlpanel uses them for reading, masking and exact zonal statistics |
+
+## Citation
+
+Run `citation("ntlpanel")` for the citation of the package. Please also cite
+the data products you use (see the `url` column of `ntl_sources()`).
+
+## Contributing
+
+Bug reports and pull requests are welcome; see
+[CONTRIBUTING.md](.github/CONTRIBUTING.md). Never paste your NASA Earthdata
+token into an issue.
+
 ## Status and validation
 
-Version 0.1.0 passes `R CMD check` and its test suite, which runs offline on
+Version 0.1.0.9000 passes `R CMD check` and its test suite, which runs offline on
 synthetic rasters, HDF5 fixtures and mocked LAADS responses. Two parts have
 **not yet been run against live data**:
 
@@ -111,7 +145,6 @@ NOAA-20 level shift across Kazakhstan's regions and calendar months.
 - NOAA-21 products once they are available on LAADS.
 - Network distances in `ntl_exposure()` (via `dodgr`).
 - H3 grid helpers built on `h3o`.
-- rOpenSci review and a JOSS paper.
 
 ## License
 

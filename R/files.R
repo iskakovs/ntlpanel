@@ -8,7 +8,8 @@
 #'
 #' Periods, platforms and tiles are parsed from file names:
 #' * Black Marble: `VNP46A3.A2023001.h25v03.002.<production>.h5`.
-#' * EOG monthly: `SVDNB_<platform>_<YYYYMMDD>-<YYYYMMDD>_<tile>_...avg_rade9h.tif`.
+#' * EOG monthly:
+#'   `SVDNB_<platform>_<YYYYMMDD>-<YYYYMMDD>_<tile>_...avg_rade9h.tif`.
 #'   The matching `...cf_cvg...` file, if present in the same folder, is
 #'   used as the observation-count layer. Each platform (`npp`, `j01`)
 #'   becomes its own series, e.g. `eog_vnl_monthly_npp`.
@@ -44,7 +45,9 @@ ntl_files <- function(paths, product, period = NULL, series = NULL,
     .stop("No files matching the '", product, "' naming pattern were found.")
   }
   absent <- files[!file.exists(files)]
-  if (length(absent) > 0) .stop("File(s) not found: ", paste(utils::head(absent, 3), collapse = ", "))
+  if (length(absent) > 0) {
+    .stop("File(s) not found: ", .first_few(absent))
+  }
   files <- normalizePath(files, winslash = "/")
 
   meta <- switch(info$family,
@@ -53,12 +56,14 @@ ntl_files <- function(paths, product, period = NULL, series = NULL,
     .meta_year(files, product)
   )
   if (!is.null(period)) {
-    if (length(period) != length(files)) .stop("`period` must have one value per file.")
+    if (length(period) != length(files)) {
+      .stop("`period` must have one value per file.")
+    }
     meta$period <- .floor_period(.parse_period(period), info$frequency)
   }
   if (anyNA(meta$period)) {
     bad <- basename(files[is.na(meta$period)])
-    .stop("Could not parse the period from: ", paste(utils::head(bad, 3), collapse = ", "),
+    .stop("Could not parse the period from: ", .first_few(bad),
           ". Pass `period` explicitly.")
   }
   if (!is.null(series)) meta$series <- series
@@ -77,10 +82,12 @@ ntl_files <- function(paths, product, period = NULL, series = NULL,
 .meta_black_marble <- function(files, product) {
   p <- .parse_bm_name(files)
   if (!all(p$ok)) {
-    .stop("Not Black Marble file names: ", paste(utils::head(basename(files[!p$ok]), 3), collapse = ", "))
+    .stop("Not Black Marble file names: ",
+          .first_few(basename(files[!p$ok])))
   }
   if (any(p$product != product)) {
-    .stop("Files belong to product(s) ", paste(unique(p$product), collapse = ", "),
+    .stop("Files belong to product(s) ",
+          paste(unique(p$product), collapse = ", "),
           ", not '", product, "'.")
   }
   info <- .source_info(product)
@@ -91,22 +98,27 @@ ntl_files <- function(paths, product, period = NULL, series = NULL,
 .meta_eog <- function(files, info) {
   b <- basename(files)
   if (info$frequency == "month") {
-    rx <- "^SVDNB_([a-z0-9]+)_([0-9]{8})-([0-9]{8})_([0-9]{2,3}[NS][0-9]{3}[EW])_.*$"
+    rx <- paste0("^SVDNB_([a-z0-9]+)_([0-9]{8})-([0-9]{8})_",
+                 "([0-9]{2,3}[NS][0-9]{3}[EW])_.*$")
     ok <- grepl(rx, b)
     token <- ifelse(ok, sub(rx, "\\1", b), NA_character_)
-    period <- as.Date(ifelse(ok, sub(rx, "\\2", b), NA_character_), format = "%Y%m%d")
+    period <- as.Date(ifelse(ok, sub(rx, "\\2", b), NA_character_),
+                      format = "%Y%m%d")
     tile <- ifelse(ok, sub(rx, "\\4", b), NA_character_)
-    nobs <- file.path(dirname(files), sub("avg_rade9h", "cf_cvg", b, fixed = TRUE))
+    nobs <- sub("avg_rade9h", "cf_cvg", b, fixed = TRUE)
   } else {
     rx <- "^VNL_(v[0-9]+_)?([a-z0-9-]+)_((19|20)[0-9]{2})_.*$"
     ok <- grepl(rx, b)
     token <- ifelse(ok, sub(rx, "\\2", b), NA_character_)
-    period <- as.Date(ifelse(ok, paste0(sub(rx, "\\3", b), "-01-01"), NA_character_))
+    yr <- ifelse(ok, sub(rx, "\\3", b), NA_character_)
+    period <- as.Date(ifelse(ok, paste0(yr, "-01-01"), NA_character_))
     tile <- NA_character_
-    nobs <- file.path(dirname(files), sub("average_masked", "cf_cvg", b, fixed = TRUE))
+    nobs <- sub("average_masked", "cf_cvg", b, fixed = TRUE)
   }
+  nobs <- file.path(dirname(files), nobs)
   nobs[!file.exists(nobs) | nobs == files] <- NA_character_
-  data.frame(series = ifelse(is.na(token), info$id, paste0(info$id, "_", token)),
+  series <- ifelse(is.na(token), info$id, paste0(info$id, "_", token))
+  data.frame(series = series,
              platform = .platform_from_token(token), period = period,
              tile = tile, nobs_file = nobs, stringsAsFactors = FALSE)
 }
@@ -118,7 +130,8 @@ ntl_files <- function(paths, product, period = NULL, series = NULL,
   yr[m > 0] <- regmatches(b, m)
   info <- .source_info(product)
   data.frame(series = product, platform = info$platform,
-             period = as.Date(ifelse(is.na(yr), NA_character_, paste0(yr, "-01-01"))),
+             period = as.Date(ifelse(is.na(yr), NA_character_,
+                                     paste0(yr, "-01-01"))),
              tile = NA_character_, nobs_file = NA_character_,
              stringsAsFactors = FALSE)
 }

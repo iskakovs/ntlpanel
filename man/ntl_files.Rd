@@ -32,7 +32,8 @@ example with blackmarbler's \code{h5_dir}).
 Periods, platforms and tiles are parsed from file names:
 \itemize{
 \item Black Marble: \verb{VNP46A3.A2023001.h25v03.002.<production>.h5}.
-\item EOG monthly: \verb{SVDNB_<platform>_<YYYYMMDD>-<YYYYMMDD>_<tile>_...avg_rade9h.tif}.
+\item EOG monthly:
+\verb{SVDNB_<platform>_<YYYYMMDD>-<YYYYMMDD>_<tile>_...avg_rade9h.tif}.
 The matching \code{...cf_cvg...} file, if present in the same folder, is
 used as the observation-count layer. Each platform (\code{npp}, \code{j01})
 becomes its own series, e.g. \code{eog_vnl_monthly_npp}.

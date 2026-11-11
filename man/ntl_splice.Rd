@@ -84,8 +84,11 @@ the switch are filled with adjusted \code{from} values where available.
 \examples{
 ex <- ntl_example()
 m <- ntl_files(ex$dir, "eog_vnl_monthly")
-m <- m[m$period >= as.Date("2022-04-01") & m$period <= as.Date("2023-03-01"), ]
+m <- m[m$period >= as.Date("2022-04-01") &
+         m$period <= as.Date("2023-03-01"), ]
 long <- ntl_extract(m, ex$units_old, id_col = "district", quiet = TRUE)
-sp <- ntl_splice(long, from = "eog_vnl_monthly_npp", to = "eog_vnl_monthly_j01")
-ntl_splice_report(sp)
+sp <- ntl_splice(long,
+  from = "eog_vnl_monthly_npp", to = "eog_vnl_monthly_j01"
+)
+head(sp)
 }

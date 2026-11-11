@@ -1,7 +1,7 @@
 Package: ntlpanel
 Type: Package
 Title: Nighttime Lights to Analysis-Ready Panels for Econometrics
-Version: 0.1.0
+Version: 0.1.0.9000
 Authors@R:
     person("Serik", "Iskakov", email = "s.iskakov@gmail.com",
            role = c("aut", "cre"))
@@ -12,8 +12,13 @@ Description: Turns satellite nighttime lights products (NASA Black Marble
     carries coverage and quality diagnostics. The package provides
     documented cross-sensor splicing, explicit rules for high-latitude
     summer gaps, crosswalks between administrative boundary vintages and
-    distance-ring treatment exposure.
+    distance-ring treatment exposure. Black Marble products are described
+    in Roman et al. (2018) <doi:10.1016/j.rse.2018.03.017>; the harmonized
+    DMSP-VIIRS series in Li et al. (2020) <doi:10.1038/s41597-020-0510-y>.
 License: MIT + file LICENSE
+URL: https://github.com/iskakovs/ntlpanel,
+    https://iskakovs.github.io/ntlpanel/
+BugReports: https://github.com/iskakovs/ntlpanel/issues
 Encoding: UTF-8
 Depends:
     R (>= 4.1.0)

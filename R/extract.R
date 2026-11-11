@@ -25,7 +25,8 @@
 #' @examples
 #' ex <- ntl_example()
 #' m <- ntl_files(ex$dir, "eog_vnl_monthly")
-#' r <- ntl_mask(ntl_read(m, period = "2022-06", series = "eog_vnl_monthly_npp"))
+#' r <- ntl_read(m, period = "2022-06", series = "eog_vnl_monthly_npp")
+#' r <- ntl_mask(r)
 #' ntl_aggregate(r, ex$units_old, id_col = "district")
 #' @export
 ntl_aggregate <- function(x, units, id_col = NULL) {
@@ -36,38 +37,45 @@ ntl_aggregate <- function(x, units, id_col = NULL) {
   ids <- .unit_ids(units, id_col)
   units <- sf::st_transform(units, terra::crs(x))
   lyr <- intersect(c("value", "masked", "nobs"), names(x))
-  summarise <- function(df) {
-    # Drop numerical slivers: polygon edges that coincide with pixel edges get
-    # coverage fractions of ~1e-15 on neighbouring pixels.
-    df <- df[df$coverage_fraction > 1e-9, , drop = FALSE]
-    cf <- df$coverage_fraction
-    v <- df$value
-    tot <- sum(cf)
-    ok <- !is.na(v)
-    valid <- sum(cf[ok])
-    s <- if (valid > 0) sum(v[ok] * cf[ok]) else NA_real_
-    data.frame(
-      ntl_sum = s,
-      ntl_sum_adj = if (valid > 0) s * tot / valid else NA_real_,
-      ntl_mean = if (valid > 0) s / valid else NA_real_,
-      share_valid = if (tot > 0) valid / tot else NA_real_,
-      share_masked = if ("masked" %in% names(df) && tot > 0) {
-        sum(cf * (df$masked %in% 1)) / tot
-      } else NA_real_,
-      mean_obs = if ("nobs" %in% names(df)) {
-        okn <- !is.na(df$nobs)
-        if (any(okn)) sum(df$nobs[okn] * cf[okn]) / sum(cf[okn]) else NA_real_
-      } else NA_real_,
-      n_pixels = tot
-    )
-  }
-  res <- exactextractr::exact_extract(x[[lyr]], units, fun = summarise,
+  res <- exactextractr::exact_extract(x[[lyr]], units, fun = .zonal_summary,
                                       summarize_df = TRUE, progress = FALSE)
   if (!is.data.frame(res)) res <- do.call(rbind, res)
   out <- data.frame(id = ids, res, stringsAsFactors = FALSE)
   names(out)[1] <- id_col %||% "unit_id"
   rownames(out) <- NULL
   out
+}
+
+# Coverage-aware summary of one unit's pixels (used by exact_extract).
+.zonal_summary <- function(df) {
+  # Drop numerical slivers: polygon edges that coincide with pixel edges get
+  # coverage fractions of ~1e-15 on neighbouring pixels.
+  df <- df[df$coverage_fraction > 1e-9, , drop = FALSE]
+  cf <- df$coverage_fraction
+  v <- df$value
+  tot <- sum(cf)
+  ok <- !is.na(v)
+  valid <- sum(cf[ok])
+  observed <- valid > 0
+  s <- if (observed) sum(v[ok] * cf[ok]) else NA_real_
+  share_masked <- NA_real_
+  if ("masked" %in% names(df) && tot > 0) {
+    share_masked <- sum(cf * (df$masked %in% 1)) / tot
+  }
+  mean_obs <- NA_real_
+  if ("nobs" %in% names(df) && any(!is.na(df$nobs))) {
+    okn <- !is.na(df$nobs)
+    mean_obs <- sum(df$nobs[okn] * cf[okn]) / sum(cf[okn])
+  }
+  data.frame(
+    ntl_sum = s,
+    ntl_sum_adj = if (observed) s * tot / valid else NA_real_,
+    ntl_mean = if (observed) s / valid else NA_real_,
+    share_valid = if (tot > 0) valid / tot else NA_real_,
+    share_masked = share_masked,
+    mean_obs = mean_obs,
+    n_pixels = tot
+  )
 }
 
 #' Extract nighttime lights for many periods
@@ -143,7 +151,8 @@ ntl_extract <- function(manifest, units, id_col = NULL, quality_max = 1,
   df
 }
 
-.keep_attrs <- c("id_col", "frequency", "splice", "value", "transform", "gap_report")
+.keep_attrs <- c("id_col", "frequency", "splice", "value", "transform",
+                 "gap_report")
 
 #' @export
 `[.ntl_long` <- function(x, ...) {

@@ -25,19 +25,25 @@
 #'   `quality`.
 #' @param flip `NA` (automatic), `TRUE` or `FALSE`.
 #' @return A `SpatRaster` in EPSG:4326.
-#' @examples
-#' \dontrun{
-#' r <- ntl_read_bm("VNP46A3.A2023001.h25v04.002.2023040123456.h5")
+#' @examplesIf "HDF5" %in% terra::gdal(drivers = TRUE)$name
+#' # A small synthetic tile shipped with the package (real tiles are
+#' # 2400 x 2400 pixels)
+#' f <- system.file("extdata", "VNP46A3.A2023001.h25v04.002.2023040000000.h5",
+#'   package = "ntlpanel"
+#' )
+#' r <- ntl_read_bm(f)
+#' r
 #' terra::plot(log1p(r$value))
-#' }
 #' @export
-ntl_read_bm <- function(file, variable = NULL, layers = c("value", "nobs", "quality"),
-                        flip = NA) {
+ntl_read_bm <- function(file, variable = NULL,
+                        layers = c("value", "nobs", "quality"), flip = NA) {
   p <- .parse_bm_name(file)
   if (!p$ok) .stop("Not a Black Marble file name: ", basename(file))
   layers <- match.arg(layers, several.ok = TRUE)
-  default_var <- if (p$product %in% .registry()$id) .source_info(p$product)$value_layer else
-    "NearNadir_Composite_Snow_Free"
+  default_var <- "NearNadir_Composite_Snow_Free"
+  if (p$product %in% .registry()$id) {
+    default_var <- .source_info(p$product)$value_layer
+  }
   variable <- variable %||% default_var
   wanted <- c(value = variable, nobs = paste0(variable, "_Num"),
               quality = paste0(variable, "_Quality"))[layers]
@@ -53,7 +59,8 @@ ntl_read_bm <- function(file, variable = NULL, layers = c("value", "nobs", "qual
   names(r) <- names(wanted)
 
   tile_ext <- .bm_tile_extent(p$tile)
-  expected <- terra::ext(tile_ext$xmin, tile_ext$xmax, tile_ext$ymin, tile_ext$ymax)
+  expected <- terra::ext(tile_ext$xmin, tile_ext$xmax,
+                         tile_ext$ymin, tile_ext$ymax)
   georef_ok <- .extent_close(terra::ext(r), expected)
   if (!georef_ok) {
     if (is.na(flip)) flip <- .bm_rows_south_up(file)
@@ -64,9 +71,10 @@ ntl_read_bm <- function(file, variable = NULL, layers = c("value", "nobs", "qual
   }
   terra::crs(r) <- "EPSG:4326"
 
-  if ("value" %in% names(r)) r[["value"]] <- terra::classify(r[["value"]], cbind(65535, NA))
-  if ("nobs" %in% names(r)) r[["nobs"]] <- terra::classify(r[["nobs"]], cbind(65535, NA))
-  if ("quality" %in% names(r)) r[["quality"]] <- terra::classify(r[["quality"]], cbind(255, NA))
+  fill <- c(value = 65535, nobs = 65535, quality = 255)
+  for (ly in names(r)) {
+    r[[ly]] <- terra::classify(r[[ly]], cbind(fill[[ly]], NA))
+  }
   r
 }
 
@@ -99,11 +107,15 @@ ntl_read <- function(manifest, period = NULL, series = NULL, aoi = NULL,
   if (!is.null(series)) m <- m[m$series %in% series, , drop = FALSE]
   if (!is.null(period)) {
     freq <- unique(m$frequency)[1] %||% "month"
-    m <- m[m$period == .floor_period(.parse_period(period), freq), , drop = FALSE]
+    target <- .floor_period(.parse_period(period), freq)
+    m <- m[m$period == target, , drop = FALSE]
   }
-  if (nrow(m) == 0) .stop("No files left in the manifest for this series/period.")
+  if (nrow(m) == 0) {
+    .stop("No files left in the manifest for this series/period.")
+  }
   if (length(unique(m$series)) != 1 || length(unique(m$period)) != 1) {
-    .stop("ntl_read() reads one series and one period at a time. Pass `series` ",
+    .stop("ntl_read() reads one series and one period at a time. ",
+          "Pass `series` ",
           "and `period`, or use ntl_extract() for many periods.")
   }
   ext <- if (is.null(aoi)) NULL else .aoi_extent(aoi)
@@ -144,7 +156,8 @@ ntl_read <- function(manifest, period = NULL, series = NULL, aoi = NULL,
 .aoi_extent <- function(aoi, pad = 1 / 240) {
   a <- .to_lonlat(.as_sf(aoi, "aoi"))
   bb <- sf::st_bbox(a)
-  terra::ext(bb[["xmin"]] - pad, bb[["xmax"]] + pad, bb[["ymin"]] - pad, bb[["ymax"]] + pad)
+  terra::ext(bb[["xmin"]] - pad, bb[["xmax"]] + pad,
+             bb[["ymin"]] - pad, bb[["ymax"]] + pad)
 }
 
 .read_file <- function(row, variable, flip) {
@@ -157,10 +170,14 @@ ntl_read <- function(manifest, period = NULL, series = NULL, aoi = NULL,
   if (!is.na(row$nobs_file)) {
     n <- terra::rast(row$nobs_file)[[1]]
     names(n) <- "nobs"
-    if (!terra::compareGeom(v, n, stopOnError = FALSE)) n <- terra::resample(n, v, method = "near")
+    if (!terra::compareGeom(v, n, stopOnError = FALSE)) {
+      n <- terra::resample(n, v, method = "near")
+    }
     v <- c(v, n)
   }
-  if (is.na(terra::crs(v)) || !nzchar(terra::crs(v))) terra::crs(v) <- "EPSG:4326"
+  if (is.na(terra::crs(v)) || !nzchar(terra::crs(v))) {
+    terra::crs(v) <- "EPSG:4326"
+  }
   v
 }
 
@@ -179,7 +196,8 @@ ntl_read <- function(manifest, period = NULL, series = NULL, aoi = NULL,
   if (length(pieces) == 0) return(NULL)
   lyr <- Reduce(intersect, lapply(pieces, names))
   pieces <- lapply(pieces, function(p) p[[lyr]])
-  r <- if (length(pieces) == 1) pieces[[1]] else terra::merge(terra::sprc(pieces))
+  r <- pieces[[1]]
+  if (length(pieces) > 1) r <- terra::merge(terra::sprc(pieces))
   if (!is.null(ext)) r <- terra::extend(r, ext, snap = "out")
   r
 }

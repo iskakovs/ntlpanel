@@ -56,7 +56,9 @@ what was fetched. Works for Suomi NPP (\code{VNP46A3}, \code{VNP46A4}) and NOAA-
 }
 \details{
 Files are stored under \verb{cache_dir/<product>/<year>/<doy>/} and are not
-downloaded again if a file of the expected size is already there. Every
+downloaded again if a file of the expected size is already there. By
+default \code{cache_dir} is a temporary folder that disappears with the R
+session; see \code{\link[=ntl_cache_dir]{ntl_cache_dir()}} to keep downloads between sessions. Every
 download is checked for an HDF5 signature, which catches the most common
 failure (an HTML login page returned because the token is invalid or the
 LAADS EULA has not been accepted). The manifest is also written to
@@ -68,9 +70,10 @@ series, fetch and extract one year at a time and call
 \code{\link[=ntl_cache_clear]{ntl_cache_clear()}} in between.
 }
 \examples{
-\dontrun{
+\dontshow{if (interactive() && nzchar(Sys.getenv("EARTHDATA_TOKEN"))) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
+# Annual tiles for Kazakhstan from both satellites (a few GB)
 kz <- c(46.4, 40.5, 87.4, 55.5)
 m_snpp <- ntl_fetch("VNP46A4", aoi = kz, start = 2018, end = 2025)
-m_j01  <- ntl_fetch("VJ146A4", aoi = kz, start = 2018, end = 2025)
-}
+m_j01 <- ntl_fetch("VJ146A4", aoi = kz, start = 2018, end = 2025)
+\dontshow{\}) # examplesIf}
 }

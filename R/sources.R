@@ -66,8 +66,12 @@ ntl_sources <- function(id = NULL) {
     nobs_layer = "NearNadir_Composite_Snow_Free_Num",
     quality_layer = "NearNadir_Composite_Snow_Free_Quality",
     units = "nW/cm2/sr",
-    file_pattern = paste0("^", id, "\\.A[0-9]{7}\\.h[0-9]{2}v[0-9]{2}\\..*\\.h5$"),
-    url = paste0("https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5200/", id, "/"),
+    file_pattern = paste0(
+      "^", id, "\\.A[0-9]{7}\\.h[0-9]{2}v[0-9]{2}\\..*\\.h5$"
+    ),
+    url = paste0(
+      "https://ladsweb.modaps.eosdis.nasa.gov/archive/allData/5200/", id, "/"
+    ),
     notes = notes
   )
 }
@@ -96,7 +100,8 @@ ntl_sources <- function(id = NULL) {
       file_pattern = "^SVDNB_[a-z0-9]+_[0-9]{8}-[0-9]{8}_.*avg_rade9h.*\\.tif$",
       url = "https://eogdata.mines.edu/products/vnl/",
       notes = paste(
-        "Download requires a free EOG account. Prefer the stray-light corrected",
+        "Download requires a free EOG account. Prefer the stray-light",
+        "corrected",
         "'vcmslcfg' files at high latitude; matching 'cf_cvg' files give",
         "cloud-free observation counts and are picked up automatically."
       )

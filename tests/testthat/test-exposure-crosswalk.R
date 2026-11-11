@@ -1,13 +1,17 @@
 test_that("distance rings and first treatment dates are assigned", {
-  units <- sf::st_sf(id = c("u1", "u2", "u3"),
-                     geometry = sf::st_sfc(
-                       sf::st_buffer(sf::st_point(c(70, 45.00)), 0.01),
-                       sf::st_buffer(sf::st_point(c(70, 45.20)), 0.01),
-                       sf::st_buffer(sf::st_point(c(70, 46.00)), 0.01),
-                       crs = 4326))
-  sites <- sf::st_sf(site = c("A", "B"), start = as.Date(c("2021-01-01", "2019-06-01")),
-                     geometry = sf::st_sfc(sf::st_point(c(70, 45.0)),
-                                           sf::st_point(c(70, 45.3)), crs = 4326))
+  geom <- sf::st_sfc(
+    sf::st_buffer(sf::st_point(c(70, 45.00)), 0.01),
+    sf::st_buffer(sf::st_point(c(70, 45.20)), 0.01),
+    sf::st_buffer(sf::st_point(c(70, 46.00)), 0.01),
+    crs = 4326
+  )
+  units <- sf::st_sf(id = c("u1", "u2", "u3"), geometry = geom)
+  sites <- sf::st_sf(
+    site = c("A", "B"),
+    start = as.Date(c("2021-01-01", "2019-06-01")),
+    geometry = sf::st_sfc(sf::st_point(c(70, 45.0)),
+                          sf::st_point(c(70, 45.3)), crs = 4326)
+  )
   e <- ntl_exposure(units, sites, rings = c(10, 25, 50), id_col = "id",
                     site_id_col = "site", site_time_col = "start")
   expect_equal(e$nearest_site, c("A", "B", "B"))
@@ -37,7 +41,8 @@ test_that("crosswalks capture splits and merges", {
 test_that("raster weights shift shares toward lit areas", {
   ex <- example_data()
   m <- ntl_files(ex$dir, "eog_vnl_monthly")
-  lights <- ntl_read(m, period = "2022-01", series = "eog_vnl_monthly_npp")$value
+  r <- ntl_read(m, period = "2022-01", series = "eog_vnl_monthly_npp")
+  lights <- r$value
   xw <- ntl_crosswalk(ex$units_old, ex$units_new, "district", "district_new",
                       weight_raster = lights)
   # The city in D1 sits at 67.5 E, i.e. in the eastern half D1b
@@ -48,7 +53,8 @@ test_that("raster weights shift shares toward lit areas", {
 test_that("applying a crosswalk handles totals, rates and missing data", {
   ex <- example_data()
   xw <- ntl_crosswalk(ex$units_old, ex$units_new, "district", "district_new")
-  d <- data.frame(district = rep(paste0("D", 1:6), 2), year = rep(2021:2022, each = 6),
+  d <- data.frame(district = rep(paste0("D", 1:6), 2),
+                  year = rep(2021:2022, each = 6),
                   jobs = c(120, 80, 60, 150, 90, 40, 120, 80, 60, 150, NA, 40),
                   rate = c(5, 7, 6, 4, 8, 10, 5, 7, 6, 4, 8, 10))
   out <- ntl_apply_crosswalk(d, xw, "district", vars = c("jobs", "rate"),
@@ -61,8 +67,10 @@ test_that("applying a crosswalk handles totals, rates and missing data", {
   expect_equal(sum(r21$jobs), sum(d$jobs[d$year == 2021]))
   r22 <- out[out$year == 2022, ]
   expect_true(is.na(r22$jobs[r22$district_new == "D56"]))
-  out2 <- ntl_apply_crosswalk(d, xw, "district", vars = "jobs", by = "year", na_rm = TRUE)
+  out2 <- ntl_apply_crosswalk(d, xw, "district", vars = "jobs", by = "year",
+                              na_rm = TRUE)
   expect_equal(out2$jobs[out2$year == 2022 & out2$district_new == "D56"], 40)
   bad <- rbind(d, data.frame(district = "D9", year = 2021, jobs = 1, rate = 1))
-  expect_warning(ntl_apply_crosswalk(bad, xw, "district", vars = "jobs"), "not in the crosswalk")
+  expect_warning(ntl_apply_crosswalk(bad, xw, "district", vars = "jobs"),
+                 "not in the crosswalk")
 })

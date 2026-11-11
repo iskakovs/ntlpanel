@@ -38,6 +38,7 @@ unit was actually observed.
 \examples{
 ex <- ntl_example()
 m <- ntl_files(ex$dir, "eog_vnl_monthly")
-r <- ntl_mask(ntl_read(m, period = "2022-06", series = "eog_vnl_monthly_npp"))
+r <- ntl_read(m, period = "2022-06", series = "eog_vnl_monthly_npp")
+r <- ntl_mask(r)
 ntl_aggregate(r, ex$units_old, id_col = "district")
 }

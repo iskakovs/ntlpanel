@@ -1,0 +1,41 @@
+url: https://iskakovs.github.io/ntlpanel/
+template:
+  bootstrap: 5
+
+reference:
+  - title: Find data
+    contents:
+      - ntl_sources
+      - ntl_tiles
+      - ntl_available
+  - title: Get data
+    contents:
+      - ntl_fetch
+      - ntl_files
+      - ntl_cache_dir
+  - title: Read and mask
+    contents:
+      - ntl_read
+      - ntl_read_bm
+      - ntl_mask
+  - title: Extract
+    contents:
+      - ntl_extract
+      - ntl_aggregate
+  - title: Build panels
+    contents:
+      - ntl_splice
+      - ntl_splice_report
+      - ntl_panel
+      - ntl_gapfill
+  - title: Design variables
+    contents:
+      - ntl_exposure
+      - ntl_crosswalk
+      - ntl_apply_crosswalk
+  - title: Example data
+    contents:
+      - ntl_example
+  - title: internal
+    contents:
+      - ntlpanel-package

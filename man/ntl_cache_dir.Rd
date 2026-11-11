@@ -2,44 +2,68 @@
 % Please edit documentation in R/cache.R
 \name{ntl_cache_dir}
 \alias{ntl_cache_dir}
-\alias{ntl_token}
+\alias{ntl_cache_info}
 \alias{ntl_cache_clear}
-\title{Cache directory and credentials}
+\alias{ntl_token}
+\title{Cache directory, cache management and credentials}
 \usage{
 ntl_cache_dir(create = TRUE)
 
-ntl_token(required = TRUE)
+ntl_cache_info(cache_dir = ntl_cache_dir(create = FALSE))
 
-ntl_cache_clear(manifest)
+ntl_cache_clear(
+  manifest = NULL,
+  all = FALSE,
+  cache_dir = ntl_cache_dir(create = FALSE)
+)
+
+ntl_token(required = TRUE)
 }
 \arguments{
 \item{create}{Create the directory if it does not exist.}
 
-\item{required}{If \code{TRUE}, error when no token is set.}
+\item{cache_dir}{Cache directory to inspect or clear.}
 
 \item{manifest}{A manifest returned by \code{\link[=ntl_fetch]{ntl_fetch()}} or \code{\link[=ntl_files]{ntl_files()}}.}
+
+\item{all}{Delete everything in the cache directory.}
+
+\item{required}{If \code{TRUE}, error when no token is set.}
 }
 \value{
-\code{ntl_cache_dir()} returns a path, \code{ntl_token()} a string (or \code{""}),
-\code{ntl_cache_clear()} the number of deleted files, invisibly.
+\code{ntl_cache_dir()} returns a path. \code{ntl_cache_info()} returns a
+one-row data frame with \code{path}, \code{n_files} and \code{size_mb}.
+\code{ntl_cache_clear()} returns the number of deleted files, invisibly.
+\code{ntl_token()} returns the token as a string (\code{""} if unset and
+\code{required = FALSE}).
 }
 \description{
-\code{ntl_cache_dir()} returns the directory where downloaded files, LAADS
-listings and manifests are stored. It is taken, in order, from the
-\code{ntlpanel.cache_dir} option, the \code{NTLPANEL_CACHE} environment variable,
-or \code{tools::R_user_dir("ntlpanel", "cache")}.
+\code{ntl_cache_dir()} returns the folder where downloaded tiles, LAADS
+listings and manifests are stored. By default this is a temporary folder
+that is deleted when the R session ends, so nothing is left on disk
+unless you ask for it. To keep downloads between sessions, set a
+permanent folder in one of two ways:
+\itemize{
+\item add \verb{NTLPANEL_CACHE=/path/to/folder} to \verb{~/.Renviron}
+(\code{tools::R_user_dir("ntlpanel", "cache")} is a good choice), or
+\item set \code{options(ntlpanel.cache_dir = "/path/to/folder")} in a script.
+}
 }
 \details{
+\code{ntl_cache_info()} reports how much space the cache uses.
+\code{ntl_cache_clear()} deletes the files listed in a manifest, which lets
+you process large areas period by period without keeping every \code{.h5}
+file, or with \code{all = TRUE} empties the whole cache.
+
 \code{ntl_token()} returns the NASA Earthdata bearer token from the
 \code{EARTHDATA_TOKEN} environment variable. Generate a token at
 \url{https://urs.earthdata.nasa.gov} (Generate Token) and store it in
 \verb{~/.Renviron} as \code{EARTHDATA_TOKEN=...}; never hard-code it in scripts.
-
-\code{ntl_cache_clear()} deletes the files listed in a manifest, which lets you
-process large areas period by period without keeping every \code{.h5} file.
 }
 \examples{
 old <- options(ntlpanel.cache_dir = file.path(tempdir(), "ntl-cache"))
 ntl_cache_dir()
+ntl_cache_info()
+ntl_cache_clear(all = TRUE)
 options(old)
 }

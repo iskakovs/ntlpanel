@@ -1,0 +1,14 @@
+bibentry(
+  bibtype = "Manual",
+  title = paste0("ntlpanel: Nighttime Lights to Analysis-Ready Panels ",
+                 "for Econometrics"),
+  author = person("Serik", "Iskakov"),
+  year = format(Sys.Date(), "%Y"),
+  note = paste("R package version", meta$Version),
+  url = "https://github.com/iskakovs/ntlpanel",
+  textVersion = paste0(
+    "Iskakov, S. (", format(Sys.Date(), "%Y"), "). ntlpanel: Nighttime ",
+    "Lights to Analysis-Ready Panels for Econometrics. R package version ",
+    meta$Version, ". https://github.com/iskakovs/ntlpanel"
+  )
+)

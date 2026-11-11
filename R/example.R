@@ -26,7 +26,8 @@
 #' ex$units_old
 #' length(list.files(ex$dir))
 #' @export
-ntl_example <- function(dir = file.path(tempdir(), "ntlpanel-example"), overwrite = FALSE) {
+ntl_example <- function(dir = file.path(tempdir(), "ntlpanel-example"),
+                        overwrite = FALSE) {
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
   res <- 0.05
   template <- terra::rast(xmin = 66, xmax = 72, ymin = 46, ymax = 52,
@@ -35,7 +36,9 @@ ntl_example <- function(dir = file.path(tempdir(), "ntlpanel-example"), overwrit
   lon <- xy[, 1]
   lat <- xy[, 2]
   cell <- seq_len(terra::ncell(template))
-  blob <- function(x0, y0, peak, sd) peak * exp(-((lon - x0)^2 + (lat - y0)^2) / (2 * sd^2))
+  blob <- function(x0, y0, peak, sd) {
+    peak * exp(-((lon - x0)^2 + (lat - y0)^2) / (2 * sd^2))
+  }
   base <- 0.3 + blob(67.5, 50.5, 40, 0.30) + blob(70.5, 47.5, 30, 0.25)
   site1 <- blob(69.2, 47.3, 15, 0.15)
   site2 <- blob(71.3, 50.8, 10, 0.15)
@@ -43,7 +46,8 @@ ntl_example <- function(dir = file.path(tempdir(), "ntlpanel-example"), overwrit
 
   north <- lat > 49
   month_layer <- function(date, scale, k) {
-    t <- (as.integer(format(date, "%Y")) - 2021) * 12 + as.integer(format(date, "%m"))
+    t <- (as.integer(format(date, "%Y")) - 2021) * 12 +
+      as.integer(format(date, "%m"))
     mo <- as.integer(format(date, "%m"))
     true <- base * (1.004^t) * (1 + 0.15 * (mo %in% c(12, 1, 2)))
     if (date >= as.Date("2022-06-01")) true <- true + site1
@@ -62,16 +66,22 @@ ntl_example <- function(dir = file.path(tempdir(), "ntlpanel-example"), overwrit
   }
   plan <- rbind(
     data.frame(platform = "npp", scale = 1, k = 0,
-               date = seq(as.Date("2021-01-01"), as.Date("2023-12-01"), by = "month")),
+               date = seq(as.Date("2021-01-01"), as.Date("2023-12-01"),
+                          by = "month")),
     data.frame(platform = "j01", scale = 1.08, k = 1,
-               date = seq(as.Date("2022-07-01"), as.Date("2023-12-01"), by = "month"))
+               date = seq(as.Date("2022-07-01"), as.Date("2023-12-01"),
+                          by = "month"))
   )
-  stems <- vapply(seq_len(nrow(plan)), function(i) stem(plan$platform[i], plan$date[i]), "")
+  stems <- vapply(seq_len(nrow(plan)), function(i) {
+    stem(plan$platform[i], plan$date[i])
+  }, "")
   f_val <- file.path(dir, paste0(stems, ".avg_rade9h.tif"))
   f_cov <- file.path(dir, paste0(stems, ".cf_cvg.tif"))
   todo <- overwrite | !file.exists(f_val) | !file.exists(f_cov)
   if (any(todo)) {
-    layers <- lapply(which(todo), function(i) month_layer(plan$date[i], plan$scale[i], plan$k[i]))
+    layers <- lapply(which(todo), function(i) {
+      month_layer(plan$date[i], plan$scale[i], plan$k[i])
+    })
     vals <- terra::rast(template, nlyrs = sum(todo))
     covs <- terra::rast(template, nlyrs = sum(todo))
     vals <- terra::setValues(vals, do.call(cbind, lapply(layers, `[[`, "val")))
@@ -103,7 +113,8 @@ ntl_example <- function(dir = file.path(tempdir(), "ntlpanel-example"), overwrit
   sites <- sf::st_sf(
     site = c("S1", "S2"),
     start = as.Date(c("2022-06-01", "2023-03-01")),
-    geometry = sf::st_sfc(sf::st_point(c(69.2, 47.3)), sf::st_point(c(71.3, 50.8)),
+    geometry = sf::st_sfc(sf::st_point(c(69.2, 47.3)),
+                          sf::st_point(c(71.3, 50.8)),
                           crs = 4326)
   )
   list(dir = normalizePath(dir, winslash = "/"), units_old = old,

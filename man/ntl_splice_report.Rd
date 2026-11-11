@@ -10,7 +10,7 @@ ntl_splice_report(x)
 \item{x}{Output of \code{\link[=ntl_splice]{ntl_splice()}}.}
 }
 \value{
-A data frame.
+A data frame with one row per unit (and calendar month).
 }
 \description{
 Returns the calibration table computed by \code{\link[=ntl_splice]{ntl_splice()}}: for each unit
@@ -20,4 +20,15 @@ their correlation, the coefficient of variation of the period-by-period
 ratio (\code{ratio_cv}; large values mean an unstable relationship), the
 calibration coefficients \code{a} and \code{b} (for \code{"ratio"}, \code{a = 0} and \code{b = k})
 and whether the pooled calibration was used as a fallback.
+}
+\examples{
+ex <- ntl_example()
+m <- ntl_files(ex$dir, "eog_vnl_monthly")
+m <- m[m$period >= as.Date("2022-04-01") &
+         m$period <= as.Date("2023-03-01"), ]
+long <- ntl_extract(m, ex$units_old, id_col = "district", quiet = TRUE)
+sp <- ntl_splice(long,
+  from = "eog_vnl_monthly_npp", to = "eog_vnl_monthly_j01"
+)
+ntl_splice_report(sp)
 }

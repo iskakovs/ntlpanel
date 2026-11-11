@@ -1,10 +1,12 @@
 ^.*\.Rproj$
-^\.Rproj\.user$
+^CONTRIBUTING\.md$
 ^LICENSE\.md$
 ^README\.Rmd$
+^\.Rproj\.user$
 ^\.github$
+^\.gitignore$
 ^_pkgdown\.yml$
+^check$
+^codecov\.yml$
 ^docs$
 ^pkgdown$
-^check$
-^\.gitignore$

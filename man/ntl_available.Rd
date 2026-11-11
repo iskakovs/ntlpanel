@@ -36,9 +36,9 @@ counts available tiles per period. Listings are cached in
 seven days because recent periods can still be reprocessed.
 }
 \examples{
-\dontrun{
+\dontshow{if (interactive()) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
 # Is NOAA-20 monthly data available for Kazakhstan in 2018?
 kz_tiles <- ntl_tiles(c(46.4, 40.5, 87.4, 55.5))$tile
 ntl_available("VJ146A3", 2018, tiles = kz_tiles)
-}
+\dontshow{\}) # examplesIf}
 }

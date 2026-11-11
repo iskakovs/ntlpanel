@@ -37,28 +37,13 @@
 #' rm <- ntl_mask(r, min_obs = 2)
 #' terra::global(rm$masked, "sum", na.rm = TRUE)
 #' @export
-ntl_mask <- function(x, quality_max = 1, min_obs = NULL, flares = NULL, cap = NULL) {
+ntl_mask <- function(x, quality_max = 1, min_obs = NULL, flares = NULL,
+                     cap = NULL) {
   if (!inherits(x, "SpatRaster") || !"value" %in% names(x)) {
     .stop("`x` must be a SpatRaster with a 'value' layer (see ntl_read()).")
   }
-  v <- x[["value"]]
-  # Pixels with zero cloud-free observations are unobserved, whatever their
-  # value says (EOG composites store 0 there). This is not counted as masking.
-  if ("nobs" %in% names(x)) v <- terra::ifel(!is.na(x[["nobs"]]) & x[["nobs"]] == 0, NA, v)
-  drop <- NULL
-  add_rule <- function(cond) {
-    cond <- terra::ifel(is.na(cond), 0, cond)
-    if (is.null(drop)) cond else (drop + cond) > 0
-  }
-  if (!is.null(quality_max) && "quality" %in% names(x)) {
-    drop <- add_rule(x[["quality"]] > quality_max)
-  }
-  if (!is.null(min_obs) && "nobs" %in% names(x)) {
-    drop <- add_rule(x[["nobs"]] < min_obs)
-  }
-  if (!is.null(flares)) {
-    drop <- add_rule(.flare_raster(flares, v))
-  }
+  v <- .drop_unobserved(x)
+  drop <- .mask_rules(x, v, quality_max, min_obs, flares)
   if (is.null(drop)) {
     masked <- terra::ifel(is.na(v), NA, 0)
   } else {
@@ -74,6 +59,31 @@ ntl_mask <- function(x, quality_max = 1, min_obs = NULL, flares = NULL, cap = NU
   out
 }
 
+# Pixels with zero cloud-free observations are unobserved, whatever their
+# value says (EOG composites store 0 there). This is not counted as masking.
+.drop_unobserved <- function(x) {
+  v <- x[["value"]]
+  if (!"nobs" %in% names(x)) return(v)
+  n <- x[["nobs"]]
+  terra::ifel(!is.na(n) & n == 0, NA, v)
+}
+
+# Combine all active rules into one raster: 1 = drop, 0 = keep. NULL if no
+# rule applies.
+.mask_rules <- function(x, v, quality_max, min_obs, flares) {
+  rules <- list()
+  if (!is.null(quality_max) && "quality" %in% names(x)) {
+    rules$quality <- x[["quality"]] > quality_max
+  }
+  if (!is.null(min_obs) && "nobs" %in% names(x)) {
+    rules$nobs <- x[["nobs"]] < min_obs
+  }
+  if (!is.null(flares)) rules$flares <- .flare_raster(flares, v)
+  if (length(rules) == 0) return(NULL)
+  rules <- lapply(rules, function(r) terra::ifel(is.na(r), 0, r))
+  Reduce(function(a, b) (a + b) > 0, rules)
+}
+
 .flare_raster <- function(flares, template) {
   if (inherits(flares, "SpatRaster")) {
     f <- terra::resample(flares[[1]], template, method = "near")
@@ -81,5 +91,6 @@ ntl_mask <- function(x, quality_max = 1, min_obs = NULL, flares = NULL, cap = NU
   }
   fl <- .as_sf(flares, "flares")
   fl <- sf::st_transform(fl, terra::crs(template))
-  terra::rasterize(terra::vect(fl), template, field = 1, background = 0, touches = TRUE)
+  terra::rasterize(terra::vect(fl), template, field = 1, background = 0,
+                   touches = TRUE)
 }

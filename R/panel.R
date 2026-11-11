@@ -25,13 +25,15 @@
 #' @examples
 #' ex <- ntl_example()
 #' m <- ntl_files(ex$dir, "eog_vnl_monthly")
-#' m <- m[m$series == "eog_vnl_monthly_npp" & m$period < as.Date("2022-01-01"), ]
+#' m <- m[m$series == "eog_vnl_monthly_npp" &
+#'          m$period < as.Date("2022-01-01"), ]
 #' long <- ntl_extract(m, ex$units_old,
 #'                     id_col = "district", quiet = TRUE)
 #' p <- ntl_panel(long, min_share_valid = 0.5)
 #' table(p$month, p$ntl_missing)
 #' @export
-ntl_panel <- function(x, value = "ntl_sum", id_col = NULL, min_share_valid = NULL,
+ntl_panel <- function(x, value = "ntl_sum", id_col = NULL,
+                      min_share_valid = NULL,
                       transform = c("log1p", "asinh", "log", "none"),
                       balance = TRUE, frequency = NULL) {
   transform <- match.arg(transform)
@@ -40,11 +42,13 @@ ntl_panel <- function(x, value = "ntl_sum", id_col = NULL, min_share_valid = NUL
   df <- x
   class(df) <- "data.frame"
   if ("series" %in% names(df) && length(unique(df$series)) > 1) {
-    .stop("`x` contains several series (", paste(unique(df$series), collapse = ", "),
+    .stop("`x` contains several series (",
+          paste(unique(df$series), collapse = ", "),
           "). Combine them with ntl_splice() or filter to one series first.")
   }
   df$period <- as.Date(df$period)
-  frequency <- frequency %||% attr(x, "frequency") %||% .infer_frequency(df$period)
+  frequency <- frequency %||% attr(x, "frequency") %||%
+    .infer_frequency(df$period)
   frequency <- .match_frequency(frequency)
   if (anyDuplicated(df[, c(id_col, "period")])) {
     .stop("`x` has duplicated unit-period rows.")
@@ -77,7 +81,8 @@ ntl_panel <- function(x, value = "ntl_sum", id_col = NULL, min_share_valid = NUL
   df$ntl_missing <- is.na(df[[value]])
   df <- df[order(df[[id_col]], df$period), , drop = FALSE]
   front <- c(id_col, "period", "period_label", "year",
-             if (frequency == "month") "month", "t", value, "ntl", "ntl_missing",
+             if (frequency == "month") "month", "t", value, "ntl",
+             "ntl_missing",
              "low_coverage")
   df <- df[, c(front, setdiff(names(df), front)), drop = FALSE]
   rownames(df) <- NULL

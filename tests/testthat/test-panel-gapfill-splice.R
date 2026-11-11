@@ -1,5 +1,8 @@
-make_long <- function(ids = c("a", "b"), periods = seq(as.Date("2020-01-01"), by = "month",
-                                                          length.out = 24),
+months_from_2020 <- function(n) {
+  seq(as.Date("2020-01-01"), by = "month", length.out = n)
+}
+
+make_long <- function(ids = c("a", "b"), periods = months_from_2020(24),
                       series = "s1", f = function(i, t) 10 * i + t) {
   g <- expand.grid(unit_id = ids, period = periods, stringsAsFactors = FALSE)
   g$series <- series
@@ -49,24 +52,25 @@ test_that("linear interpolation fills only short interior gaps", {
 test_that("seasonal fill recovers a multiplicative series", {
   months <- rep(1:12, 3)
   years <- rep(2020:2022, each = 12)
-  S <- 1 + 0.3 * cos(2 * pi * (1:12) / 12)
-  S <- S / mean(S)
-  L <- c(100, 110, 121)
-  v <- S[months] * L[years - 2019]
+  season <- 1 + 0.3 * cos(2 * pi * (1:12) / 12)
+  season <- season / mean(season)
+  level <- c(100, 110, 121)
+  v <- season[months] * level[years - 2019]
   w <- v
   w[c(6, 19, 32)] <- NA # one June-ish gap per year, different months
   filled <- ntlpanel:::.seasonal_fill(w, years, months)
   expect_equal(filled, v, tolerance = 1e-8)
   never <- v
   never[months == 6] <- NA
-  expect_true(all(is.na(ntlpanel:::.seasonal_fill(never, years, months)[months == 6])))
+  out <- ntlpanel:::.seasonal_fill(never, years, months)
+  expect_true(all(is.na(out[months == 6])))
 })
 
 test_that("gap filling marks imputed values and flags stray-light risk", {
   ex <- example_data()
   m <- ntl_files(ex$dir, "eog_vnl_monthly")
-  long <- ntl_extract(m[m$series == "eog_vnl_monthly_npp", ], ex$units_old,
-                      id_col = "district", quiet = TRUE)
+  m <- m[m$series == "eog_vnl_monthly_npp", ]
+  long <- ntl_extract(m, ex$units_old, id_col = "district", quiet = TRUE)
   sub <- long[long$period >= as.Date("2021-01-01"), ]
   expect_equal(attr(sub, "id_col"), "district") # subsetting keeps metadata
   p <- ntl_panel(sub, min_share_valid = 0.5)
@@ -78,7 +82,8 @@ test_that("gap filling marks imputed values and flags stray-light risk", {
   expect_equal(sum(pi$imputed), n_missing)
   expect_true(all(pi$impute_method[pi$imputed] == "interp"))
   expect_true(all(pi$stray_light_risk[pi$imputed]))
-  expect_false(any(pi$stray_light_risk[pi$district %in% c("D4", "D5", "D6")]))
+  south <- pi$district %in% c("D4", "D5", "D6")
+  expect_false(any(pi$stray_light_risk[south]))
   pd <- ntl_gapfill(p, rule = "drop")
   expect_equal(nrow(pd), nrow(p) - n_missing)
   ps <- ntl_gapfill(p, rule = "seasonal")
@@ -89,9 +94,10 @@ test_that("gap filling marks imputed values and flags stray-light risk", {
 })
 
 test_that("ratio splicing recovers a known level shift", {
-  per <- seq(as.Date("2020-01-01"), by = "month", length.out = 24)
+  per <- months_from_2020(24)
   a <- make_long(periods = per, series = "old")
-  b <- make_long(periods = per[13:24], series = "new", f = function(i, t) 1.1 * (10 * i + t + 12))
+  b <- make_long(periods = per[13:24], series = "new",
+                 f = function(i, t) 1.1 * (10 * i + t + 12))
   sp <- ntl_splice(rbind(a, b), from = "old", to = "new")
   d <- ntl_splice_report(sp)
   expect_equal(d$b, c(1.1, 1.1), tolerance = 1e-10)
@@ -108,26 +114,30 @@ test_that("ratio splicing recovers a known level shift", {
 })
 
 test_that("regression splicing, switch dates and fallbacks work", {
-  per <- seq(as.Date("2020-01-01"), by = "month", length.out = 12)
+  per <- months_from_2020(12)
   a <- make_long(periods = per, series = "old")
-  b <- make_long(periods = per, series = "new", f = function(i, t) 2 + 0.5 * (10 * i + t))
-  sp <- ntl_splice(rbind(a, b), from = "old", to = "new", method = "regression",
-                   switch_at = "2020-07")
+  b <- make_long(periods = per, series = "new",
+                 f = function(i, t) 2 + 0.5 * (10 * i + t))
+  sp <- ntl_splice(rbind(a, b), from = "old", to = "new",
+                   method = "regression", switch_at = "2020-07")
   d <- ntl_splice_report(sp)
   expect_equal(d$a, c(2, 2), tolerance = 1e-8)
   expect_equal(d$b, c(0.5, 0.5), tolerance = 1e-8)
   expect_equal(sum(sp$origin == "new"), 12)
-  few <- ntl_splice(rbind(a, b), from = "old", to = "new", overlap = c("2020-01", "2020-02"))
+  few <- ntl_splice(rbind(a, b), from = "old", to = "new",
+                    overlap = c("2020-01", "2020-02"))
   expect_true(all(ntl_splice_report(few)$fallback))
   expect_error(ntl_splice(a, from = "old", to = "nope"), "not found")
 })
 
 test_that("gap filling after the switch uses the adjusted old series", {
-  per <- seq(as.Date("2020-01-01"), by = "month", length.out = 12)
+  per <- months_from_2020(12)
   a <- make_long(periods = per, series = "old")
-  b <- make_long(periods = per[7:12], series = "new", f = function(i, t) 2 * (10 * i + t + 6))
+  b <- make_long(periods = per[7:12], series = "new",
+                 f = function(i, t) 2 * (10 * i + t + 6))
   b$ntl_sum[b$unit_id == "a" & b$period == per[9]] <- NA
-  sp <- ntl_splice(rbind(a, b), from = "old", to = "new", fill_gaps = TRUE, min_overlap = 2)
+  sp <- ntl_splice(rbind(a, b), from = "old", to = "new", fill_gaps = TRUE,
+                   min_overlap = 2)
   filled <- sp[sp$unit_id == "a" & sp$period == per[9], ]
   expect_equal(filled$origin, "old (adjusted, gap fill)")
   expect_equal(filled$ntl_sum, 2 * (10 + 9), tolerance = 1e-8)

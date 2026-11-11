@@ -34,7 +34,7 @@
   if (any(is_ymd)) out[is_ymd] <- as.Date(x[is_ymd])
   if (anyNA(out[!is.na(x)])) {
     bad <- x[is.na(out) & !is.na(x)]
-    .stop("Could not parse period(s): ", paste(utils::head(bad, 5), collapse = ", "),
+    .stop("Could not parse period(s): ", .first_few(bad, 5),
           ". Use 'YYYY', 'YYYY-MM', 'YYYY-MM-DD' or a Date.")
   }
   out
@@ -51,7 +51,9 @@
 .period_seq <- function(start, end, frequency) {
   s <- .floor_period(.parse_period(start), frequency)
   e <- .floor_period(.parse_period(end), frequency)
-  if (length(s) != 1 || length(e) != 1) .stop("`start` and `end` must be single values.")
+  if (length(s) != 1 || length(e) != 1) {
+    .stop("`start` and `end` must be single values.")
+  }
   if (e < s) .stop("`end` is before `start`.")
   seq(s, e, by = frequency)
 }
@@ -66,20 +68,25 @@
   if (inherits(x, "bbox")) x <- sf::st_as_sfc(x)
   if (inherits(x, "sfc")) x <- sf::st_sf(geometry = x)
   if (is.numeric(x) && length(x) == 4 && !inherits(x, "sf")) {
-    bb <- sf::st_bbox(c(xmin = x[[1]], ymin = x[[2]], xmax = x[[3]], ymax = x[[4]]),
-                      crs = sf::st_crs(4326))
+    bb <- sf::st_bbox(
+      c(xmin = x[[1]], ymin = x[[2]], xmax = x[[3]], ymax = x[[4]]),
+      crs = sf::st_crs(4326)
+    )
     x <- sf::st_sf(geometry = sf::st_as_sfc(bb))
   }
   if (!inherits(x, "sf")) {
     .stop("`", arg, "` must be an sf/sfc object, a terra SpatVector or a ",
           "numeric bbox c(xmin, ymin, xmax, ymax) in longitude/latitude.")
   }
-  if (is.na(sf::st_crs(x))) .stop("`", arg, "` has no coordinate reference system.")
+  if (is.na(sf::st_crs(x))) {
+    .stop("`", arg, "` has no coordinate reference system.")
+  }
   x
 }
 
 .to_lonlat <- function(x) {
-  if (isTRUE(sf::st_crs(x) == sf::st_crs(4326))) x else sf::st_transform(x, 4326)
+  if (isTRUE(sf::st_crs(x) == sf::st_crs(4326))) return(x)
+  sf::st_transform(x, 4326)
 }
 
 # Run code with s2 switched off (planar operations on lon/lat rectangles).
@@ -97,7 +104,10 @@
     .check_cols(units, id_col, "units")
     ids <- units[[id_col]]
   }
-  if (anyDuplicated(ids)) .stop("Unit identifiers in `", id_col %||% "row number", "` must be unique.")
+  if (anyDuplicated(ids)) {
+    .stop("Unit identifiers in `", id_col %||% "row number",
+          "` must be unique.")
+  }
   ids
 }
 
@@ -113,4 +123,8 @@
 
 .drop_geometry <- function(x) {
   if (inherits(x, "sf")) sf::st_drop_geometry(x) else x
+}
+
+.first_few <- function(x, n = 3) {
+  paste(utils::head(x, n), collapse = ", ")
 }

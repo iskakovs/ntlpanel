@@ -46,8 +46,14 @@ increases with row number, and (3) otherwise assumes north-up rows. Use
 before a large run.
 }
 \examples{
-\dontrun{
-r <- ntl_read_bm("VNP46A3.A2023001.h25v04.002.2023040123456.h5")
+\dontshow{if ("HDF5" \%in\% terra::gdal(drivers = TRUE)$name) (if (getRversion() >= "3.4") withAutoprint else force)(\{ # examplesIf}
+# A small synthetic tile shipped with the package (real tiles are
+# 2400 x 2400 pixels)
+f <- system.file("extdata", "VNP46A3.A2023001.h25v04.002.2023040000000.h5",
+  package = "ntlpanel"
+)
+r <- ntl_read_bm(f)
+r
 terra::plot(log1p(r$value))
-}
+\dontshow{\}) # examplesIf}
 }

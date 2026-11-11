@@ -35,7 +35,9 @@ ntl_exposure <- function(units, sites, rings = c(10, 25, 50), id_col = NULL,
                          from = c("centroid", "boundary")) {
   from <- match.arg(from)
   rings <- sort(unique(as.numeric(rings)))
-  if (length(rings) == 0 || any(rings <= 0)) .stop("`rings` must be positive distances in km.")
+  if (length(rings) == 0 || any(rings <= 0)) {
+    .stop("`rings` must be positive distances in km.")
+  }
   units <- .to_lonlat(.as_sf(units, "units"))
   sites <- .to_lonlat(.as_sf(sites, "sites"))
   if (nrow(sites) == 0) .stop("`sites` is empty.")
@@ -44,18 +46,24 @@ ntl_exposure <- function(units, sites, rings = c(10, 25, 50), id_col = NULL,
   if (!is.null(site_time_col)) .check_cols(sites, site_time_col, "sites")
 
   geom <- sf::st_geometry(units)
-  if (from == "centroid") geom <- suppressWarnings(sf::st_point_on_surface(geom))
+  if (from == "centroid") {
+    geom <- suppressWarnings(sf::st_point_on_surface(geom))
+  }
   sgeom <- sf::st_geometry(sites)
   nearest <- sf::st_nearest_feature(geom, sgeom)
-  dist_km <- as.numeric(sf::st_distance(geom, sgeom[nearest], by_element = TRUE)) / 1000
+  dist_m <- sf::st_distance(geom, sgeom[nearest], by_element = TRUE)
+  dist_km <- as.numeric(dist_m) / 1000
 
-  labels <- c(paste0(c(0, utils::head(rings, -1)), "-", rings), paste0(">", max(rings)))
-  ring <- cut(dist_km, breaks = c(-Inf, rings, Inf), labels = labels, right = TRUE)
+  labels <- c(paste0(c(0, utils::head(rings, -1)), "-", rings),
+              paste0(">", max(rings)))
+  ring <- cut(dist_km, breaks = c(-Inf, rings, Inf), labels = labels,
+              right = TRUE)
 
   within <- sf::st_is_within_distance(geom, sgeom, dist = max(rings) * 1000)
   out <- data.frame(id = ids, stringsAsFactors = FALSE)
   names(out) <- id_col %||% "unit_id"
-  out$nearest_site <- if (is.null(site_id_col)) nearest else sites[[site_id_col]][nearest]
+  out$nearest_site <- nearest
+  if (!is.null(site_id_col)) out$nearest_site <- sites[[site_id_col]][nearest]
   out$dist_km <- dist_km
   out$ring <- ring
   for (r in rings) out[[paste0("within_", r, "km")]] <- dist_km <= r
