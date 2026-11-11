@@ -1,15 +1,11 @@
 # rOpenSci pre-submission checks
 # https://github.com/ropensci-review-tools/pkgcheck-action
+# Run manually (Actions > pkgcheck > Run workflow) once R-CMD-check and
+# test-coverage are green: pkgcheck counts still-running checks as failures.
 name: pkgcheck
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref }}
-  cancel-in-progress: true
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 
 jobs:
   pkgcheck:
