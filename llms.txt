@@ -134,21 +134,30 @@ Never paste your NASA Earthdata token into an issue.
 
 Version 0.1.0.9000 passes `R CMD check` and its test suite, which runs
 offline on synthetic rasters, HDF5 fixtures and mocked LAADS responses.
-Two parts have **not yet been run against live data**:
+It has also been run against live NASA data: a validation over
+Kazakhstan (November 2026) downloaded about 300 Black Marble tiles,
+confirmed that tiles are read the right way up, and compared Suomi NPP
+with NOAA-20 for 14 regions (annual, 2018-2025) and 7 regions (monthly,
+2024). Findings that matter beyond Kazakhstan:
 
-1.  **Downloads.** Authenticated downloads in
-    [`ntl_fetch()`](https://iskakovs.github.io/ntlpanel/reference/ntl_fetch.md).
-    The URL layout and listing format were checked against the live
-    archive, and the whole download path is tested with mocked
-    responses.
-2.  **Tile orientation.** Orientation with real Black Marble files.
-    Tiles are read with `hdf5r` (GDAL versions disagree about their row
-    order) and assumed north-up, as in the product specification.
+- **NOAA-20 reads darker than Suomi NPP.** Region-specific factors
+  ranged from 0.79 to 1.01 (median 0.87) and were stable across years
+  (`ratio_cv` 0.07-0.13). Switching sensors without splicing would
+  create a spurious drop of about 13%; annual region-specific ratios
+  correct it well.
+- **Monthly data at high latitude have structural gaps.** Snow-free
+  composites lose most of November-March to snow cover, and north of
+  about 50 N June has almost no usable nights. In the remaining months
+  the month-to-month ratio between sensors was unstable in northern
+  regions, so prefer annual or growing-season aggregates there and check
+  `share_valid` by month before modelling.
+- **`by_month = TRUE` needs several years of overlap.** With one year,
+  each calendar-month factor rests on a single month per unit.
 
-Run
-`system.file("scripts", "validate_splice_kz.R", package = "ntlpanel")`
-first. It checks orientation on a known city and measures the Suomi NPP
-to NOAA-20 level shift across Kazakhstan’s regions and calendar months.
+The script is in
+`system.file("scripts", "validate_splice_kz.R", package = "ntlpanel")`;
+it runs with any region boundaries and can be limited to a few tiles and
+years.
 
 ## Roadmap
 

@@ -189,7 +189,9 @@ NOAA-20 level and switches to NOAA-20 from its first month.</p>
 unit-specific shift, or a high <code>ratio_cv</code> (an unstable
 month-to-month ratio), means the splice needs care. With
 <code>by_month = TRUE</code> the calibration is estimated separately for
-each calendar month.</p>
+each calendar month. That needs several years of overlap: with one or
+two, each month’s factor rests on one or two observations per unit and
+can be dominated by noise.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">d5</span> <span class="op">&lt;-</span> <span class="va">long</span><span class="op">[</span><span class="va">long</span><span class="op">$</span><span class="va">district</span> <span class="op">==</span> <span class="st">"D5"</span>, <span class="op">]</span></span>
 <span><span class="va">s5</span> <span class="op">&lt;-</span> <span class="va">sp</span><span class="op">[</span><span class="va">sp</span><span class="op">$</span><span class="va">district</span> <span class="op">==</span> <span class="st">"D5"</span>, <span class="op">]</span></span>
@@ -419,6 +421,13 @@ after each year.</p>
 <code>system.file("scripts", "validate_splice_kz.R", package = "ntlpanel")</code>.
 It checks tile orientation and whether the Suomi NPP to NOAA-20 shift is
 stable across Kazakhstan’s regions and seasons.</p>
+<p>A run in November 2026 found that annual splicing works well (NOAA-20
+about 13% darker, with stable region-specific factors), but that monthly
+Black Marble data for northern Kazakhstan are thin: snow removes most of
+November-March, June has almost no usable nights north of about 50 N,
+and the sensor ratio is unstable in the months that remain. For northern
+regions, annual or April-October aggregates are the safer choice; check
+<code>share_valid</code> by month first.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

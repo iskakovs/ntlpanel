@@ -35,14 +35,17 @@
 
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="development version" id="ntlpanel-development-version">ntlpanel (development version)<a class="anchor" aria-label="anchor" href="#ntlpanel-development-version"></a></h2>
-<ul><li>
-<code><a href="../reference/ntl_read_bm.html">ntl_read_bm()</a></code> now reads Black Marble tiles with hdf5r instead of GDAL. Recent GDAL versions return these grids upside down, which flipped tiles on R 4.5 and 4.6. hdf5r moves from Suggests to Imports. Fill values, <code>scale_factor</code> and <code>add_offset</code> are taken from the dataset attributes.</li>
-<li>Downloads now go to a temporary folder by default; set <code>NTLPANEL_CACHE</code> or the <code>ntlpanel.cache_dir</code> option to keep them between sessions.</li>
-<li>New <code><a href="../reference/ntl_cache_dir.html">ntl_cache_info()</a></code>; <code>ntl_cache_clear(all = TRUE)</code> empties the cache.</li>
-<li>A small example Black Marble tile ships in <code>inst/extdata</code>, so <code><a href="../reference/ntl_read_bm.html">ntl_read_bm()</a></code> has a runnable example.</li>
-<li>Examples that need the internet or a token use <code>@examplesIf</code> instead of <code>\dontrun{}</code>.</li>
-<li>Internal refactoring of <code><a href="../reference/ntl_fetch.html">ntl_fetch()</a></code>, <code><a href="../reference/ntl_splice.html">ntl_splice()</a></code>, <code><a href="../reference/ntl_gapfill.html">ntl_gapfill()</a></code>, <code><a href="../reference/ntl_mask.html">ntl_mask()</a></code> and <code><a href="../reference/ntl_crosswalk.html">ntl_crosswalk()</a></code> into smaller helpers; code follows an 80-character line limit.</li>
-<li>Added <code>CITATION</code>, contributing guidelines, a pkgdown configuration and GitHub Actions workflows (R CMD check, pkgcheck, pkgdown, coverage).</li>
+<ul><li><p><code><a href="../reference/ntl_fetch.html">ntl_fetch()</a></code> and <code><a href="../reference/ntl_available.html">ntl_available()</a></code> now retry dropped connections and timeouts (<code>httr2_failure</code>), not only HTTP error responses. A long download no longer stops on a single “Connection was reset”; if all attempts fail, the error says that running the call again resumes.</p></li>
+<li><p>Once a download has worked in a session, an HTTP 401 from LAADS is treated as a temporary refusal: it is retried for up to about 15 minutes and the error no longer blames the token.</p></li>
+<li><p><code><a href="../reference/ntl_cache_dir.html">?ntl_token</a></code> describes the one-time Earthdata account setup LAADS needs (complete profile, accepted EULAs, LAADS authorized), and the token error points to it.</p></li>
+<li><p><code>inst/scripts/validate_splice_kz.R</code>: a reliable orientation check (city light vs. mirrored boxes), parallel downloads (<code>WORKERS</code>), tile and year subsets (<code>TILES</code>, <code>MONTHLY_TILES</code>, <code>ANNUAL_YEARS</code>), and resumable runs that skip files LAADS keeps refusing instead of stopping. It no longer prints the token when run with <code>Rscript</code>.</p></li>
+<li><p><code><a href="../reference/ntl_read_bm.html">ntl_read_bm()</a></code> now reads Black Marble tiles with hdf5r instead of GDAL. Recent GDAL versions return these grids upside down, which flipped tiles on R 4.5 and 4.6. hdf5r moves from Suggests to Imports. Fill values, <code>scale_factor</code> and <code>add_offset</code> are taken from the dataset attributes.</p></li>
+<li><p>Downloads now go to a temporary folder by default; set <code>NTLPANEL_CACHE</code> or the <code>ntlpanel.cache_dir</code> option to keep them between sessions.</p></li>
+<li><p>New <code><a href="../reference/ntl_cache_dir.html">ntl_cache_info()</a></code>; <code>ntl_cache_clear(all = TRUE)</code> empties the cache.</p></li>
+<li><p>A small example Black Marble tile ships in <code>inst/extdata</code>, so <code><a href="../reference/ntl_read_bm.html">ntl_read_bm()</a></code> has a runnable example.</p></li>
+<li><p>Examples that need the internet or a token use <code>@examplesIf</code> instead of <code>\dontrun{}</code>.</p></li>
+<li><p>Internal refactoring of <code><a href="../reference/ntl_fetch.html">ntl_fetch()</a></code>, <code><a href="../reference/ntl_splice.html">ntl_splice()</a></code>, <code><a href="../reference/ntl_gapfill.html">ntl_gapfill()</a></code>, <code><a href="../reference/ntl_mask.html">ntl_mask()</a></code> and <code><a href="../reference/ntl_crosswalk.html">ntl_crosswalk()</a></code> into smaller helpers; code follows an 80-character line limit.</p></li>
+<li><p>Added <code>CITATION</code>, contributing guidelines, a pkgdown configuration and GitHub Actions workflows (R CMD check, pkgcheck, pkgdown, coverage).</p></li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.1.0" id="ntlpanel-010">ntlpanel 0.1.0<a class="anchor" aria-label="anchor" href="#ntlpanel-010"></a></h2>

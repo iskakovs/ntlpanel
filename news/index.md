@@ -2,22 +2,50 @@
 
 ## ntlpanel (development version)
 
+- [`ntl_fetch()`](https://iskakovs.github.io/ntlpanel/reference/ntl_fetch.md)
+  and
+  [`ntl_available()`](https://iskakovs.github.io/ntlpanel/reference/ntl_available.md)
+  now retry dropped connections and timeouts (`httr2_failure`), not only
+  HTTP error responses. A long download no longer stops on a single
+  “Connection was reset”; if all attempts fail, the error says that
+  running the call again resumes.
+
+- Once a download has worked in a session, an HTTP 401 from LAADS is
+  treated as a temporary refusal: it is retried for up to about 15
+  minutes and the error no longer blames the token.
+
+- [`?ntl_token`](https://iskakovs.github.io/ntlpanel/reference/ntl_cache_dir.md)
+  describes the one-time Earthdata account setup LAADS needs (complete
+  profile, accepted EULAs, LAADS authorized), and the token error points
+  to it.
+
+- `inst/scripts/validate_splice_kz.R`: a reliable orientation check
+  (city light vs. mirrored boxes), parallel downloads (`WORKERS`), tile
+  and year subsets (`TILES`, `MONTHLY_TILES`, `ANNUAL_YEARS`), and
+  resumable runs that skip files LAADS keeps refusing instead of
+  stopping. It no longer prints the token when run with `Rscript`.
+
 - [`ntl_read_bm()`](https://iskakovs.github.io/ntlpanel/reference/ntl_read_bm.md)
   now reads Black Marble tiles with hdf5r instead of GDAL. Recent GDAL
   versions return these grids upside down, which flipped tiles on R 4.5
   and 4.6. hdf5r moves from Suggests to Imports. Fill values,
   `scale_factor` and `add_offset` are taken from the dataset attributes.
+
 - Downloads now go to a temporary folder by default; set
   `NTLPANEL_CACHE` or the `ntlpanel.cache_dir` option to keep them
   between sessions.
+
 - New
   [`ntl_cache_info()`](https://iskakovs.github.io/ntlpanel/reference/ntl_cache_dir.md);
   `ntl_cache_clear(all = TRUE)` empties the cache.
+
 - A small example Black Marble tile ships in `inst/extdata`, so
   [`ntl_read_bm()`](https://iskakovs.github.io/ntlpanel/reference/ntl_read_bm.md)
   has a runnable example.
+
 - Examples that need the internet or a token use `@examplesIf` instead
   of `\dontrun{}`.
+
 - Internal refactoring of
   [`ntl_fetch()`](https://iskakovs.github.io/ntlpanel/reference/ntl_fetch.md),
   [`ntl_splice()`](https://iskakovs.github.io/ntlpanel/reference/ntl_splice.md),
@@ -26,6 +54,7 @@
   and
   [`ntl_crosswalk()`](https://iskakovs.github.io/ntlpanel/reference/ntl_crosswalk.md)
   into smaller helpers; code follows an 80-character line limit.
+
 - Added `CITATION`, contributing guidelines, a pkgdown configuration and
   GitHub Actions workflows (R CMD check, pkgcheck, pkgdown, coverage).
 
