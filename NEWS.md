@@ -1,5 +1,21 @@
 # ntlpanel (development version)
 
+* `ntl_fetch()` and `ntl_available()` now retry dropped connections and
+  timeouts (`httr2_failure`), not only HTTP error responses. A long
+  download no longer stops on a single "Connection was reset"; if all
+  attempts fail, the error says that running the call again resumes.
+* Once a download has worked in a session, an HTTP 401 from LAADS is
+  treated as a temporary refusal: it is retried for up to about 15 minutes
+  and the error no longer blames the token.
+* `?ntl_token` describes the one-time Earthdata account setup LAADS needs
+  (complete profile, accepted EULAs, LAADS authorized), and the token
+  error points to it.
+* `inst/scripts/validate_splice_kz.R`: a reliable orientation check (city
+  light vs. mirrored boxes), parallel downloads (`WORKERS`), tile and year
+  subsets (`TILES`, `MONTHLY_TILES`, `ANNUAL_YEARS`), and resumable runs
+  that skip files LAADS keeps refusing instead of stopping. It no longer
+  prints the token when run with `Rscript`.
+
 * `ntl_read_bm()` now reads Black Marble tiles with hdf5r instead of GDAL.
   Recent GDAL versions return these grids upside down, which flipped tiles
   on R 4.5 and 4.6. hdf5r moves from Suggests to Imports. Fill values,

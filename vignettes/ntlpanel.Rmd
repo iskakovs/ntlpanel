@@ -85,7 +85,9 @@ ntl_splice_report(sp)[, cols]
 `level_shift_pct` is the gap between sensors. A large or unit-specific shift,
 or a high `ratio_cv` (an unstable month-to-month ratio), means the splice
 needs care. With `by_month = TRUE` the calibration is estimated separately
-for each calendar month.
+for each calendar month. That needs several years of overlap: with one or
+two, each month's factor rests on one or two observations per unit and can
+be dominated by noise.
 
 ```{r, fig.alt = "Raw and spliced series for district D5"}
 d5 <- long[long$district == "D5", ]
@@ -224,3 +226,11 @@ Before you commit to a long monthly series, run
 `system.file("scripts", "validate_splice_kz.R", package = "ntlpanel")`. It
 checks tile orientation and whether the Suomi NPP to NOAA-20 shift is
 stable across Kazakhstan's regions and seasons.
+
+A run in November 2026 found that annual splicing works well (NOAA-20 about
+13% darker, with stable region-specific factors), but that monthly Black
+Marble data for northern Kazakhstan are thin: snow removes most of
+November-March, June has almost no usable nights north of about 50 N, and
+the sensor ratio is unstable in the months that remain. For northern regions,
+annual or April-October aggregates are the safer choice; check
+`share_valid` by month first.

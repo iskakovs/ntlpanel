@@ -141,6 +141,91 @@ test_that("ntl_fetch downloads, verifies and records tiles (mocked)", {
   expect_equal(ntl_cache_clear(m2), 1)
 })
 
+test_that("dropped connections are retried, then reported", {
+  withr::local_options(ntlpanel.retry_pause = 0)
+  src <- withr::local_tempdir()
+  fixture <- make_bm_h5(src, product = "VNP46A4", date = "2022001",
+                        tile = "h25v04")
+  listing <- paste0(listing_header, "\n", basename(fixture),
+                    ",2023-02-09 00:00,", file.size(fixture),
+                    ",1,null,null,File,\n")
+  fails <- 0
+  mock <- function(req) {
+    if (grepl("\\.csv$", req$url)) {
+      return(httr2::response(200, url = req$url, body = charToRaw(listing)))
+    }
+    if (fails < n_fail) {
+      fails <<- fails + 1
+      stop(structure(
+        list(message = "Recv failure: Connection was reset", call = NULL),
+        class = c("httr2_failure", "httr2_error", "error", "condition")
+      ))
+    }
+    httr2::response(200, url = req$url,
+                    body = readBin(fixture, "raw", file.size(fixture)))
+  }
+  fetch <- function() {
+    httr2::with_mocked_responses(mock, ntl_fetch(
+      "VNP46A4", tiles = "h25v04", start = 2022, end = 2022,
+      token = "fake-token", cache_dir = cache, quiet = TRUE, retries = 3
+    ))
+  }
+  cache <- withr::local_tempdir()
+  n_fail <- 2
+  expect_equal(fetch()$status, "downloaded")
+  expect_equal(fails, 2)
+
+  cache <- withr::local_tempdir()
+  fails <- 0
+  n_fail <- 3
+  expect_error(fetch(), "failed 3 times.*Connection was reset.*resume")
+  expect_length(list.files(cache, pattern = "\\.part$", recursive = TRUE), 0)
+})
+
+test_that("a 401 after a working download is treated as temporary", {
+  # Retry policy: short before any download worked, long afterwards
+  p0 <- ntlpanel:::.retry_policy(3, token_ok = FALSE)
+  expect_equal(p0$max_tries, 3)
+  expect_null(p0$backoff)
+  p1 <- ntlpanel:::.retry_policy(3, token_ok = TRUE, pause = 10)
+  expect_equal(p1$max_tries, 5)
+  expect_equal(p1$backoff(1:5), c(30, 60, 120, 240, 480))
+
+  withr::local_options(ntlpanel.retry_pause = 0)
+  state <- ntlpanel:::.ntl_state
+  old <- state$download_ok
+  withr::defer(state$download_ok <- old)
+  src <- withr::local_tempdir()
+  fixture <- make_bm_h5(src, product = "VNP46A4", date = "2022001",
+                        tile = "h25v04")
+  listing <- paste0(listing_header, "\n", basename(fixture),
+                    ",2023-02-09 00:00,", file.size(fixture),
+                    ",1,null,null,File,\n")
+  refuse <- TRUE
+  mock <- function(req) {
+    if (grepl("\\.csv$", req$url)) {
+      return(httr2::response(200, url = req$url, body = charToRaw(listing)))
+    }
+    if (refuse) return(httr2::response(401, url = req$url))
+    httr2::response(200, url = req$url,
+                    body = readBin(fixture, "raw", file.size(fixture)))
+  }
+  fetch <- function() {
+    httr2::with_mocked_responses(mock, ntl_fetch(
+      "VNP46A4", tiles = "h25v04", start = 2022, end = 2022,
+      token = "fake-token", cache_dir = withr::local_tempdir(),
+      quiet = TRUE, retries = 2
+    ))
+  }
+  state$download_ok <- NULL
+  expect_error(fetch(), "EARTHDATA_TOKEN")
+  refuse <- FALSE
+  expect_equal(fetch()$status, "downloaded")
+  expect_true(state$download_ok)
+  refuse <- TRUE
+  expect_error(fetch(), "usually temporary")
+})
+
 test_that("an HTML login page instead of HDF5 gives a token error", {
   fname <- "VNP46A4.A2022001.h25v04.002.2023040000000.h5"
   listing <- paste0(listing_header, "\n", fname,

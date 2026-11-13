@@ -37,7 +37,8 @@ series observe.}
 
 \item{by_month}{Estimate a separate calibration for each calendar month
 (monthly data). Useful at high latitude, where the two satellites'
-summer coverage differs.}
+summer coverage differs. Needs several years of overlap: with fewer,
+each factor rests on one or two months per unit.}
 
 \item{switch_at}{First period taken from \code{to}. Defaults to the first
 period in which \code{to} has data.}

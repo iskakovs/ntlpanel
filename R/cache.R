@@ -15,9 +15,19 @@
 #' file, or with `all = TRUE` empties the whole cache.
 #'
 #' `ntl_token()` returns the NASA Earthdata bearer token from the
-#' `EARTHDATA_TOKEN` environment variable. Generate a token at
-#' <https://urs.earthdata.nasa.gov> (Generate Token) and store it in
-#' `~/.Renviron` as `EARTHDATA_TOKEN=...`; never hard-code it in scripts.
+#' `EARTHDATA_TOKEN` environment variable. Store it in `~/.Renviron` as
+#' `EARTHDATA_TOKEN=...` (no quotes, no `Bearer` prefix) and never
+#' hard-code it in scripts. A token alone is not enough for LAADS; once per
+#' account:
+#' 1. At <https://urs.earthdata.nasa.gov/users>, complete the profile,
+#'    including Study Area, User Type and Organization.
+#' 2. Under EULAs, Accept New EULAs, accept the MERIS and Sentinel EULAs.
+#' 3. Log in at <https://ladsweb.modaps.eosdis.nasa.gov> with your
+#'    Earthdata account and click Authorize when asked.
+#' 4. Generate a token (Generate Token) after these steps.
+#'
+#' If downloads return a login page instead of data, one of these steps is
+#' missing.
 #'
 #' @param create Create the directory if it does not exist.
 #' @param manifest A manifest returned by [ntl_fetch()] or [ntl_files()].
@@ -85,7 +95,8 @@ ntl_token <- function(required = TRUE) {
     .stop(
       "No NASA Earthdata token found. Create one at ",
       "https://urs.earthdata.nasa.gov (Generate Token), then add ",
-      "EARTHDATA_TOKEN=<token> to ~/.Renviron and restart R."
+      "EARTHDATA_TOKEN=<token> to ~/.Renviron and restart R. ",
+      "See ?ntl_token for the one-time account setup LAADS requires."
     )
   }
   tok

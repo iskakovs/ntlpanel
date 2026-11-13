@@ -41,7 +41,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Serik Iskakov \email{s.iskakov@gmail.com}
+\strong{Maintainer}: Serik Iskakov \email{s.iskakov@gmail.com} (\href{https://orcid.org/0009-0003-8013-5377}{ORCID})
 
 }
 \keyword{internal}

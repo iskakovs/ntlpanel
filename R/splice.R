@@ -33,7 +33,8 @@
 #'   series observe.
 #' @param by_month Estimate a separate calibration for each calendar month
 #'   (monthly data). Useful at high latitude, where the two satellites'
-#'   summer coverage differs.
+#'   summer coverage differs. Needs several years of overlap: with fewer,
+#'   each factor rests on one or two months per unit.
 #' @param switch_at First period taken from `to`. Defaults to the first
 #'   period in which `to` has data.
 #' @param fill_gaps Fill missing `to` values after the switch with adjusted

@@ -194,7 +194,7 @@ ntl_fetch <- function(product, aoi = NULL, start, end, tiles = NULL,
     req <- httr2::req_timeout(req, timeout)
     req <- httr2::req_retry(req, max_tries = 3)
     req <- httr2::req_error(req, is_error = function(resp) FALSE)
-    resp <- httr2::req_perform(req)
+    resp <- .perform_retry(req, tries = 3)
     status <- httr2::resp_status(resp)
     if (status == 404) return(.empty_listing())
     if (status >= 400) {
@@ -204,6 +204,33 @@ ntl_fetch <- function(product, aoi = NULL, start, end, tiles = NULL,
     writeBin(httr2::resp_body_raw(resp), dest)
   }
   .read_listing(dest, product, period)
+}
+
+# httr2::req_retry() retries HTTP error responses, but a dropped connection
+# or a timeout raises an `httr2_failure` instead. Retry those here, with
+# increasing pauses (option `ntlpanel.retry_pause`, default 10 seconds).
+.perform_retry <- function(req, path = NULL, tries = 4) {
+  pause <- getOption("ntlpanel.retry_pause", 10)
+  for (i in seq_len(tries)) {
+    resp <- tryCatch(httr2::req_perform(req, path = path),
+                     httr2_failure = function(e) e)
+    if (!inherits(resp, "httr2_failure")) return(resp)
+    if (i < tries) Sys.sleep(pause * i)
+  }
+  why <- if (is.null(resp$parent)) resp else resp$parent
+  .stop("Connection to LAADS failed ", tries, " times for ", req$url, " (",
+        trimws(conditionMessage(why)), "). Run the same call again to ",
+        "resume; files already downloaded are kept.")
+}
+
+# Once a download has worked in this session the token is known to be good,
+# so a 401 is most likely a temporary refusal by LAADS: retry more often and
+# wait longer (30 s, 1, 2, 4, 8 min with the default pause of 10).
+.retry_policy <- function(retries, token_ok,
+                          pause = getOption("ntlpanel.retry_pause", 10)) {
+  if (!isTRUE(token_ok)) return(list(max_tries = retries, backoff = NULL))
+  list(max_tries = retries + 2,
+       backoff = function(i) pause * 3 * 2^(i - 1))
 }
 
 .is_cached <- function(dest, expected_size, overwrite) {
@@ -227,23 +254,37 @@ ntl_fetch <- function(product, aoi = NULL, start, end, tiles = NULL,
   transient <- function(resp) {
     httr2::resp_status(resp) %in% c(401, 429, 500, 502, 503, 504)
   }
-  req <- httr2::req_retry(req, max_tries = retries, is_transient = transient)
+  token_ok <- isTRUE(.ntl_state$download_ok)
+  policy <- .retry_policy(retries, token_ok)
+  req <- httr2::req_retry(req, max_tries = policy$max_tries,
+                          is_transient = transient, backoff = policy$backoff)
   req <- httr2::req_error(req, is_error = function(resp) FALSE)
-  resp <- httr2::req_perform(req, path = tmp)
+  resp <- .perform_retry(req, path = tmp, tries = retries)
   if (!file.exists(tmp) && is.raw(resp$body)) writeBin(resp$body, tmp)
-  .check_download(httr2::resp_status(resp), tmp, dest, url, expected_size)
+  .check_download(httr2::resp_status(resp), tmp, dest, url, expected_size,
+                  token_ok)
   if (file.exists(dest)) unlink(dest)
   file.rename(tmp, dest)
+  .ntl_state$download_ok <- TRUE
   "downloaded"
 }
 
-.check_download <- function(status, tmp, dest, url, expected_size) {
+.check_download <- function(status, tmp, dest, url, expected_size,
+                            token_ok = FALSE) {
+  if (token_ok && status %in% c(401, 403)) {
+    .stop(
+      "LAADS kept refusing ", basename(dest), " (HTTP ", status, ") ",
+      "although earlier downloads in this session worked. This is usually ",
+      "temporary on the LAADS side: run the same call again later to ",
+      "resume; files already downloaded are kept."
+    )
+  }
   if (status %in% c(401, 403) || (status < 400 && !.is_hdf5(tmp))) {
     .stop(
       "LAADS did not return an HDF5 file for ", basename(dest),
       " (HTTP ", status, "). Check that EARTHDATA_TOKEN is valid and not ",
-      "expired, and that the LAADS DAAC data-use agreement is accepted in ",
-      "your Earthdata profile."
+      "expired, and that your Earthdata account is set up for LAADS ",
+      "(complete profile, accepted EULAs, LAADS authorized; see ?ntl_token)."
     )
   }
   if (status >= 400) .stop("Download failed (HTTP ", status, "): ", url)

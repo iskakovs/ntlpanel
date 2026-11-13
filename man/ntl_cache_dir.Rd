@@ -56,9 +56,21 @@ you process large areas period by period without keeping every \code{.h5}
 file, or with \code{all = TRUE} empties the whole cache.
 
 \code{ntl_token()} returns the NASA Earthdata bearer token from the
-\code{EARTHDATA_TOKEN} environment variable. Generate a token at
-\url{https://urs.earthdata.nasa.gov} (Generate Token) and store it in
-\verb{~/.Renviron} as \code{EARTHDATA_TOKEN=...}; never hard-code it in scripts.
+\code{EARTHDATA_TOKEN} environment variable. Store it in \verb{~/.Renviron} as
+\code{EARTHDATA_TOKEN=...} (no quotes, no \code{Bearer} prefix) and never
+hard-code it in scripts. A token alone is not enough for LAADS; once per
+account:
+\enumerate{
+\item At \url{https://urs.earthdata.nasa.gov/users}, complete the profile,
+including Study Area, User Type and Organization.
+\item Under EULAs, Accept New EULAs, accept the MERIS and Sentinel EULAs.
+\item Log in at \url{https://ladsweb.modaps.eosdis.nasa.gov} with your
+Earthdata account and click Authorize when asked.
+\item Generate a token (Generate Token) after these steps.
+}
+
+If downloads return a login page instead of data, one of these steps is
+missing.
 }
 \examples{
 old <- options(ntlpanel.cache_dir = file.path(tempdir(), "ntl-cache"))
